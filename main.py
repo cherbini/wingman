@@ -29,7 +29,13 @@ class Application:
         cv2.createTrackbar("Flip Horizontal", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Flip Vertical", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Lead Time", "Settings", 0, 5, nothing)
+        cv2.createTrackbar("Confidence", "Settings", 50, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
+        # Initialize Kalman filter
 
+        self.kalman = cv2.KalmanFilter(4, 2)
+        self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
+        self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
+        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 1e-4
 
     def run(self):
         while True:
@@ -41,6 +47,10 @@ class Application:
                     lead_time = cv2.getTrackbarPos("Lead Time", "Settings")
                     flip_horizontal = cv2.getTrackbarPos("Flip Horizontal", "Settings")
                     flip_vertical = cv2.getTrackbarPos("Flip Vertical", "Settings")
+                    confidence_threshold = cv2.getTrackbarPos("Confidence", "Settings") / 100.0  # Convert to a value between 0 and 1
+
+                    # Filter detections based on confidence
+                    detections = [d for d in detections if d.confidence >= confidence_threshold]
         
                     if flip_horizontal:
                         frame = cv2.flip(frame, 1)
@@ -68,6 +78,16 @@ class Application:
                             # Draw a green dot on the centroid
                             centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
                             cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
+                            # Update Kalman filter
+                            centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
+                            self.kalman.correct(centroid)
+                            prediction = self.kalman.predict()
+                    
+                            # Draw prediction
+                            prediction_px = (int(prediction[0]), int(prediction[1]))
+                            cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+
+
                             # Calculate velocity
                             if prev_x_pixels is not None and prev_y_pixels is not None:
                                 vx_pixels, vy_pixels = self.coordinate_system.calculate_velocity(
