@@ -1,5 +1,6 @@
 # File: main.py
 
+import time
 import cv2
 import numpy as np
 import tkinter as tk
@@ -31,13 +32,20 @@ class Application:
         cv2.createTrackbar("Lead Time", "Settings", 0, 5, nothing)
         cv2.createTrackbar("Confidence", "Settings", 50, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
         cv2.createTrackbar("Servo Scale", "Settings", 90 , 100, nothing)
+        cv2.createTrackbar("Process Noise Cov", "Settings", 90, 100, nothing)
+        cv2.createTrackbar("Measurement Noise Cov", "Settings", 90, 100, nothing)
+        cv2.createTrackbar("Show Frame", "Settings", 1, 1, nothing)
 
         # Initialize Kalman filter
-
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 1e-4
+
+        # Set home and detection timer
+        self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
+        self.last_detection_time = time.time()
+
 
     def run(self):
         pan_goal = None
@@ -54,14 +62,20 @@ class Application:
                         flip_vertical = cv2.getTrackbarPos("Flip Vertical", "Settings")
                         confidence_threshold = cv2.getTrackbarPos("Confidence", "Settings") / 100.0  # Convert to a value between 0 and 1
                         servo_scale = cv2.getTrackbarPos("Servo Scale", "Settings") / 100.0  # Convert to a value between 0 and 1
+                        process_noise_cov = cv2.getTrackbarPos("Process Noise Cov", "Settings") * 1e-2  # Scale appropriately
+                        measurement_noise_cov = cv2.getTrackbarPos("Measurement Noise Cov", "Settings") * 1e-2  # Scale appropriately
+                        show_frame = cv2.getTrackbarPos("Show Frame", "Settings")
+
                     except Exception as e:
                         print(f"An error occurred while adjusting the sliders: {e}")
                         # You may want to set default values here
-                        lead_time = 1
+                        lead_time = 2
                         flip_horizontal = 1
                         flip_vertical = 1
                         confidence_threshold = 0.5
                         servo_scale = .9
+                        process_noise_cov = 0.2
+                        measurement_noise_cov = 0.1
 
 
                     # Filter detections based on confidence
@@ -79,6 +93,8 @@ class Application:
         
         
                     if detections:
+
+                        self.last_detection_time = time.time()
                         # Sort detections by confidence
                         detections.sort(key=lambda detection: detection.confidence, reverse=True)
 
@@ -103,6 +119,9 @@ class Application:
                                     centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
                                     cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
                                     # Update Kalman filter
+                                    self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
+                                    self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
+
                                     centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
                                     self.kalman.correct(centroid)
                                     prediction = self.kalman.predict()
@@ -155,11 +174,21 @@ class Application:
                                         self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
                                 
                                     # Display the frame
-                                    cv2.imshow("Frame", frame)
+                                    if show_frame:
+                                        cv2.imshow("Frame", frame)
+                                    else:
+                                        cv2.destroyWindow("Frame")
                                 
                                     # Break if 'q' is pressed
                                     if cv2.waitKey(1) == ord('q'):
                                         break
+                if time.time() - self.last_detection_time > 3:
+                    pan_goal = self.home_position[0]
+                    tilt_goal = self.home_position[1]
+                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
+                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
+
+
 
             except cv2.error as e:
                 print(f"A cv2.error occurred: {e}")

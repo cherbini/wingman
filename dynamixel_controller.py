@@ -18,6 +18,8 @@ class DynamixelController:
         self.BAUDRATE = baudrate
         self.PAN_SERVO_ID = pan_servo_id
         self.TILT_SERVO_ID = tilt_servo_id
+        self.PAN_CENTER_POSITION = 2048
+        self.TILT_CENTER_POSITION = 2048
 
         # Control table address for Protocol 2.0 (MX series)
         self.ADDR_MX_TORQUE_ENABLE = 64
