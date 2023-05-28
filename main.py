@@ -30,10 +30,10 @@ class Application:
         cv2.createTrackbar("Flip Horizontal Image", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Flip Vertical Image", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Servo Speed", "Settings", 512, 1023, nothing)  # Default speed is 512, maximum is 1023
-        cv2.createTrackbar("Lead Time", "Settings", 0, 5, nothing)
-        cv2.createTrackbar("Confidence", "Settings", 50, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
+        cv2.createTrackbar("Lead Time", "Settings", 5, 10, nothing)
+        cv2.createTrackbar("Confidence", "Settings", 65, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
         cv2.createTrackbar("Servo Scale", "Settings", 90 , 100, nothing)
-        cv2.createTrackbar("Process Noise Cov", "Settings", 0, 100, nothing)
+        cv2.createTrackbar("Process Noise Cov", "Settings", 30, 100, nothing)
         cv2.createTrackbar("Measurement Noise Cov", "Settings", 0, 100, nothing)
         cv2.createTrackbar("Show Frame", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Reverse Pan", "Settings", 0, 1, nothing)
@@ -48,6 +48,8 @@ class Application:
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 1e-2
+        self.MAX_VALID_PREDICTION = 1000
+        self.MIN_VALID_PREDICTION = 0
 
         # Set home and detection timer
         self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
@@ -93,7 +95,7 @@ class Application:
             try:
                 for frame, detections in self.motion_tracker.run():
                     try:
-                        lead_time = cv2.getTrackbarPos("Lead Time", "Settings")
+                        lead_time = cv2.getTrackbarPos("Lead Time", "Settings") / 10.0
                     except Exception as e:
                         print(f"An error occurred while adjusting the Lead Time slider: {e}")
                         # You may want to set a default value here
@@ -208,36 +210,42 @@ class Application:
 
                             centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
                             self.kalman.correct(centroid)
+
                             prediction = self.kalman.predict()
+
                             print(f"Kalman prediction: {prediction}")
 
 
-                            # Draw prediction
-                            prediction_px = (int(prediction[0]), int(prediction[1]))
-                            cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
-                        
-                            if bbox is not None:
-                                # Calculate centroid
-                                centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+                            if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
 
-                                # Calculate velocity
-                                if prev_x_pixels is not None and prev_y_pixels is not None:
-                                    prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
-                                        centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
-                                    )
-                        
-                                # Update previous position
-                                prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
-                        
+                                # Draw prediction
+                                prediction_px = (int(prediction[0]), int(prediction[1]))
+                                cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+                            
+                                if bbox is not None:
+                                    # Calculate centroid
+                                    centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+    
+                                    # Calculate velocity
+                                    if prev_x_pixels is not None and prev_y_pixels is not None:
+                                        prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
+                                            centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
+                                        )
+                            
+                                    # Update previous position
+                                    prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
+                            
+                                else:
+                                    # Detection lost
+                                    if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
+                                        # Predict new position based on last known velocity
+                                        predicted_x_pixels = prev_x_pixels + prev_vx_pixels
+                                        predicted_y_pixels = prev_y_pixels + prev_vy_pixels
+                            
+                                        # Use predicted position as if it was a real detection
+                                        centroid = (predicted_x_pixels, predicted_y_pixels)
                             else:
-                                # Detection lost
-                                if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
-                                    # Predict new position based on last known velocity
-                                    predicted_x_pixels = prev_x_pixels + prev_vx_pixels
-                                    predicted_y_pixels = prev_y_pixels + prev_vy_pixels
-                        
-                                    # Use predicted position as if it was a real detection
-                                    centroid = (predicted_x_pixels, predicted_y_pixels)
+                                continue
 
                         # Set goal position for servos, even if no new detections have been made
                         if centroid is not None:
