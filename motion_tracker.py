@@ -32,7 +32,7 @@ class MotionTracker:
         self.camRgb.setFps(40)
 
         # Network specific settings
-        self.detectionNetwork.setConfidenceThreshold(0.5)
+        self.detectionNetwork.setConfidenceThreshold(0.7)
         self.detectionNetwork.setNumClasses(80)
         self.detectionNetwork.setCoordinateSize(4)
         self.detectionNetwork.setAnchors([10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319])
@@ -81,8 +81,32 @@ class MotionTracker:
 
                 if inRgb is not None:
                     frame = inRgb.getCvFrame()
-                    cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                                (2, frame.shape[0] - 1), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
+                
+                    # Original text
+                    text = "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime))
+                
+                    # Calculate the size and midpoint of the text box
+                    font = cv2.FONT_HERSHEY_TRIPLEX
+                    fontScale = 0.4
+                    thickness = 1
+                    text_size, _ = cv2.getTextSize(text, font, fontScale, thickness)
+                    mid_x = 2 + text_size[0] // 2
+                    mid_y = frame.shape[0] - 1 + text_size[1] // 2
+                
+                    # Create a new image to draw the text on
+                    text_image = np.zeros(frame.shape, dtype=np.uint8)
+                
+                    # Draw the text on the new image
+                    cv2.putText(text_image, text, (2, frame.shape[0] - 1), font, fontScale, color2, thickness, cv2.LINE_AA)
+                
+                    # Get the rotation matrix
+                    rot_mat = cv2.getRotationMatrix2D((mid_x, mid_y), 180, 1)
+                
+                    # Rotate the text
+                    rotated_text = cv2.warpAffine(text_image, rot_mat, frame.shape[1::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+                
+                    # Add the rotated text to the original frame
+                    frame = cv2.add(frame, rotated_text)
 
                 if inDet is not None:
                     detections = inDet.detections

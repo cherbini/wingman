@@ -38,6 +38,9 @@ class Application:
         cv2.createTrackbar("Show Frame", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Reverse Pan", "Settings", 0, 1, nothing)
         cv2.createTrackbar("Reverse Tilt", "Settings", 0, 1, nothing)
+        # Add trackbars (acting as buttons)
+        cv2.createTrackbar("Save Settings", "Settings", 0, 1, self.save_settings)
+        cv2.createTrackbar("Load Settings", "Settings", 0, 1, self.load_settings)
 
 
         # Initialize Kalman filter
@@ -50,6 +53,22 @@ class Application:
         self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
         self.last_detection_time = time.time()
         self.last_positions = []
+    def save_settings(self, value):
+        if value == 1:  # Only save when the trackbar is set to 1
+            settings = {}
+            for setting in ["Flip Horizontal Image", "Flip Vertical Image", "Lead Time", "Confidence", "Servo Scale", "Process Noise Cov", "Measurement Noise Cov", "Show Frame", "Reverse Pan", "Reverse Tilt"]:
+                settings[setting] = cv2.getTrackbarPos(setting, "Settings")
+            with open("settings.json", "w") as f:
+                json.dump(settings, f)
+            # Optionally reset the "Save Settings" trackbar to 0 here
+    
+    def load_settings(self, value):
+        if value == 1:  # Only load when the trackbar is set to 1
+            with open("settings.json", "r") as f:
+                settings = json.load(f)
+            for setting, value in settings.items():
+                cv2.setTrackbarPos(setting, "Settings", value)
+            # Optionally reset the "Load Settings" trackbar to 0 here
 
 
     def run(self):
@@ -69,42 +88,75 @@ class Application:
                 for frame, detections in self.motion_tracker.run():
                     try:
                         lead_time = cv2.getTrackbarPos("Lead Time", "Settings")
-                        flip_horizontal = cv2.getTrackbarPos("Flip Horizontal", "Settings")
-                        flip_vertical = cv2.getTrackbarPos("Flip Vertical", "Settings")
-                        confidence_threshold = cv2.getTrackbarPos("Confidence", "Settings") / 100.0  # Convert to a value between 0 and 1
-                        servo_scale = cv2.getTrackbarPos("Servo Scale", "Settings") / 100.0  # Convert to a value between 0 and 1
-                        process_noise_cov = cv2.getTrackbarPos("Process Noise Cov", "Settings") * 1e-2  # Scale appropriately
-                        measurement_noise_cov = cv2.getTrackbarPos("Measurement Noise Cov", "Settings") * 1e-2  # Scale appropriately
-                        show_frame = cv2.getTrackbarPos("Show Frame", "Settings")
-                        servo_speed = cv2.getTrackbarPos("Servo Speed", "Settings")
-                        try:
-                            reverse_pan = cv2.getTrackbarPos("Reverse Pan", "Settings")
-                        except Exception as e:
-                            print(f"An error occurred while adjusting the Reverse Pan slider: {e}")
-                            # You may want to set a default value here
-                            reverse_pan = 0
-                        
-                        try:
-                            reverse_tilt = cv2.getTrackbarPos("Reverse Tilt", "Settings")
-                        except Exception as e:
-                            print(f"An error occurred while adjusting the Reverse Tilt slider: {e}")
-                            # You may want to set a default value here
-                            reverse_tilt = 0
-
                     except Exception as e:
-                        print(f"An error occurred while adjusting the sliders: {e}")
-                        # You may want to set default values here
-                        lead_time = 2
-                        flip_horizontal = 1
-                        flip_vertical = 1
-                        confidence_threshold = 0.5
-                        servo_scale = .9
-                        process_noise_cov = 0.2
-                        measurement_noise_cov = 0.1
-                        reverse_pan = 0
-                        reverse_tilt = 0
-                        servo_speed = 512
+                        print(f"An error occurred while adjusting the Lead Time slider: {e}")
+                        # You may want to set a default value here
+                        lead_time = 0
+                    try:
+                        flip_horizontal = cv2.getTrackbarPos("Flip Horizontal", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Flip Horizonzal slider: {e}")
+                        # You may want to set a default value here
+                        flip_horizontal = 0
 
+                    try:
+                        flip_vertical = cv2.getTrackbarPos("Flip Vertical", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Flip Vertical slider: {e}")
+                        # You may want to set a default value here
+                        flip_vertical = 0
+                    try:
+                        confidence_threshold = cv2.getTrackbarPos("Confidence", "Settings") / 100.0  # Convert to a value between 0 and 1
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Confidence slider: {e}")
+                        # You may want to set a default value here
+                        confidence_threshold = 0.7
+
+                    try:
+                        servo_scale = cv2.getTrackbarPos("Servo Scale", "Settings") / 100.0  # Convert to a value between 0 and 1
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Servo Scale slider: {e}")
+                        # You may want to set a default value here
+                        servo_scale = 0
+                    try:
+                        process_noise_cov = cv2.getTrackbarPos("Process Noise Cov", "Settings") * 1e-2  # Scale appropriately
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Process Noise Cov slider: {e}")
+                        # You may want to set a default value here
+                        process_noise_cov = 0.3
+
+                    try:
+                        measurement_noise_cov = cv2.getTrackbarPos("Measurement Noise Cov", "Settings") * 1e-2  # Scale appropriately
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Measurement Noise Cov slider: {e}")
+                        # You may want to set a default value here
+                        measurement_noise_cov = 0
+                    try:
+                        show_frame = cv2.getTrackbarPos("Show Frame", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Show Frame slider: {e}")
+                        # You may want to set a default value here
+                        show_Frame = 1
+                    
+                    try:
+                        servo_speed = cv2.getTrackbarPos("Servo Speed", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Servo Speed slider: {e}")
+                        # You may want to set a default value here
+                        servo_speed = 512
+                    try:
+                        reverse_pan = cv2.getTrackbarPos("Reverse Pan", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Reverse Pan slider: {e}")
+                        # You may want to set a default value here
+                        reverse_pan = 0
+                    
+                    try:
+                        reverse_tilt = cv2.getTrackbarPos("Reverse Tilt", "Settings")
+                    except Exception as e:
+                        print(f"An error occurred while adjusting the Reverse Tilt slider: {e}")
+                        # You may want to set a default value here
+                        reverse_tilt = 0
 
                     # Filter detections based on confidence
                     detections = [d for d in detections if d.confidence >= confidence_threshold]
@@ -127,62 +179,59 @@ class Application:
                         # Sort detections by confidence
                         detections.sort(key=lambda detection: detection.confidence, reverse=True)
 
-
                         # Take the most confident detection
                         most_confident_detection = detections[0]
                         # Now, handle only the most_confident_detection
                         if most_confident_detection.label == 0:
-                            for detection in detections:
-                                if detection.label == 0:
-                                    # Print class label
-                                    print(f"Label: {detection.label}")
+                            # Print class label
+                            print(f"Label: {detection.label}")
 
-                                    # Get bounding box coordinates
-                                    bbox = [detection.xmin, detection.ymin, detection.xmax, detection.ymax]
-                                    print(f"Bounding Box: {bbox}")
+                            # Get bounding box coordinates
+                            bbox = [detection.xmin, detection.ymin, detection.xmax, detection.ymax]
+                            print(f"Bounding Box: {bbox}")
 
-                                    # Calculate centroid
-                                    centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
-                                    print(f"Centroid: {centroid}")
-                                    # Draw a green dot on the centroid
-                                    centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
-                                    cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
-                                    # Update Kalman filter
-                                    self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
-                                    self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
+                            # Calculate centroid
+                            centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+                            print(f"Centroid: {centroid}")
+                            # Draw a green dot on the centroid
+                            centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
+                            cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
+                            # Update Kalman filter
+                            self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
+                            self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
 
-                                    centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
-                                    self.kalman.correct(centroid)
-                                    prediction = self.kalman.predict()
-                                    print(f"Kalman prediction: {prediction}")
+                            centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
+                            self.kalman.correct(centroid)
+                            prediction = self.kalman.predict()
+                            print(f"Kalman prediction: {prediction}")
 
 
-                                    # Draw prediction
-                                    prediction_px = (int(prediction[0]), int(prediction[1]))
-                                    cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
-                                
-                                    if bbox is not None:
-                                        # Calculate centroid
-                                        centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+                            # Draw prediction
+                            prediction_px = (int(prediction[0]), int(prediction[1]))
+                            cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+                        
+                            if bbox is not None:
+                                # Calculate centroid
+                                centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
 
-                                        # Calculate velocity
-                                        if prev_x_pixels is not None and prev_y_pixels is not None:
-                                            prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
-                                                centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
-                                            )
-                                
-                                        # Update previous position
-                                        prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
-                                
-                                    else:
-                                        # Detection lost
-                                        if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
-                                            # Predict new position based on last known velocity
-                                            predicted_x_pixels = prev_x_pixels + prev_vx_pixels
-                                            predicted_y_pixels = prev_y_pixels + prev_vy_pixels
-                                
-                                            # Use predicted position as if it was a real detection
-                                            centroid = (predicted_x_pixels, predicted_y_pixels)
+                                # Calculate velocity
+                                if prev_x_pixels is not None and prev_y_pixels is not None:
+                                    prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
+                                        centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
+                                    )
+                        
+                                # Update previous position
+                                prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
+                        
+                            else:
+                                # Detection lost
+                                if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
+                                    # Predict new position based on last known velocity
+                                    predicted_x_pixels = prev_x_pixels + prev_vx_pixels
+                                    predicted_y_pixels = prev_y_pixels + prev_vy_pixels
+                        
+                                    # Use predicted position as if it was a real detection
+                                    centroid = (predicted_x_pixels, predicted_y_pixels)
 
                         # Set goal position for servos, even if no new detections have been made
                         if centroid is not None:
@@ -201,23 +250,37 @@ class Application:
                             ) * servo_scale
 
                         # Set the servo speed
+                        try:
+                            self.dynamixel_controller.set_speed(self.dynamixel_controller.PAN_SERVO_ID, servo_speed)
+                        except Exception as e:
+                            print(f"Failed to set PAN servo speed: {e}")
+                        
+                        try:
+                            self.dynamixel_controller.set_speed(self.dynamixel_controller.TILT_SERVO_ID, servo_speed)
+                        except Exception as e:
+                            print(f"Failed to set TILT servo speed: {e}")
+
                         self.dynamixel_controller.set_speed(self.dynamixel_controller.PAN_SERVO_ID, servo_speed)
                         self.dynamixel_controller.set_speed(self.dynamixel_controller.TILT_SERVO_ID, servo_speed)
-
                 
                         # Set servo goal positions
                         if pan_goal is not None and tilt_goal is not None:
+                            pan_goal = self.dynamixel_controller.clamp_servo_position(
+                                pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION
+                            )
+                            tilt_goal = self.dynamixel_controller.clamp_servo_position(
+                                tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION
+                            )
+
                             self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
                             self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
                 
                         # If no detection for the last 3 seconds, move servos back to home position
                         if last_detection_time and time.time() - last_detection_time > 3.0:
-                            if self.home_position:
-                                pan_goal, tilt_goal = self.home_position
                                 self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
                                 self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
-                            else:
-                                print("Home position not set. Unable to return to home position.")
+                        else:
+                            print("Home position not set. Unable to return to home position.")
         
                         # Display the frame
                         if show_frame:
