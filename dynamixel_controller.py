@@ -8,6 +8,8 @@ class DynamixelController:
     PAN_MAX_POSITION = 4095  # Adjust as needed
     TILT_MIN_POSITION = 0 # Adjust as needed
     TILT_MAX_POSITION = 4095  # Adjust as needed
+    PAN_CENTER_POSITION = 2048
+    TILT_CENTER_POSITION = 2048
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -18,8 +20,6 @@ class DynamixelController:
         self.BAUDRATE = baudrate
         self.PAN_SERVO_ID = pan_servo_id
         self.TILT_SERVO_ID = tilt_servo_id
-        self.PAN_CENTER_POSITION = 2048
-        self.TILT_CENTER_POSITION = 2048
 
         # Control table address for Protocol 2.0 (MX series)
         self.ADDR_MX_TORQUE_ENABLE = 64

@@ -51,6 +51,7 @@ class Application:
 
         # Set home and detection timer
         self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
+        print("Home Position: {self.home_position}")
         self.last_detection_time = time.time()
         self.last_positions = []
     def save_settings(self, value):
@@ -80,6 +81,11 @@ class Application:
         except AttributeError as e:
             print(f"Failed to get home position: {e}")
             self.home_position = None
+
+        if self.home_position is None:
+            print("Error: Home Position is not set")
+            return
+
         self.dynamixel_controller.servo_test()
         prev_x_pixels, prev_y_pixels = None, None
         prev_vx_pixels, prev_vy_pixels = None, None
@@ -272,16 +278,23 @@ class Application:
                                 tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION
                             )
 
-                            self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
-                            self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
+                            try:
+                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
+                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
+                            except RxPacketError:
+                                print("Error: The dara value exceeds the limit value.")
+                                continue
+
                 
                         # If no detection for the last 3 seconds, move servos back to home position
                         if last_detection_time and time.time() - last_detection_time > 3.0:
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
-                        else:
-                            print("Home position not set. Unable to return to home position.")
-        
+                            if self.home_position is not None:
+                                pan_home, tilt_home = self.home_position
+                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_home)
+                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_home)
+                            else:
+                                print("Home position not set. Unable to return to home position.") 
+
                         # Display the frame
                         if show_frame:
                             cv2.imshow("Frame", frame)
