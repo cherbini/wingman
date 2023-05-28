@@ -24,6 +24,7 @@ class DynamixelController:
         # Control table address for Protocol 2.0 (MX series)
         self.ADDR_MX_TORQUE_ENABLE = 64
         self.ADDR_MX_GOAL_POSITION = 116
+        self.ADDR_MX_GOAL_SPEED = 32
         self.LEN_GOAL_POSITION = 4  # Data Byte Length
         self.ADDR_MX_PRESENT_POSITION = 132
         self.LEN_PRESENT_POSITION = 4  # Data Byte Length
@@ -68,6 +69,14 @@ class DynamixelController:
     @staticmethod
     def clamp_servo_position(position, min_position, max_position):
         return max(min(position, max_position), min_position)
+
+    def set_speed(self, servo_id, dxl_goal_speed):
+        # Write the goal speed
+        dxl_comm_result, dxl_error = self.packetHandler.write2ByteTxRx(self.portHandler, servo_id, 32, dxl_goal_speed)
+        if dxl_comm_result != sdk.COMM_SUCCESS:
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
 
     def set_goal_position(self, servo_id, goal_position):
         try:
