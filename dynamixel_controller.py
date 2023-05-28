@@ -4,10 +4,10 @@ import time
 class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
-    PAN_MIN_POSITION = 648  # Adjust as needed
-    PAN_MAX_POSITION = 2448  # Adjust as needed
-    TILT_MIN_POSITION = 648  # Adjust as needed
-    TILT_MAX_POSITION = 2548  # Adjust as needed
+    PAN_MIN_POSITION = 0  # Adjust as needed
+    PAN_MAX_POSITION = 4095  # Adjust as needed
+    TILT_MIN_POSITION = 0 # Adjust as needed
+    TILT_MAX_POSITION = 4095  # Adjust as needed
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -67,36 +67,40 @@ class DynamixelController:
     def clamp_servo_position(position, min_position, max_position):
         return max(min(position, max_position), min_position)
 
-
-
     def set_goal_position(self, servo_id, goal_position):
-        # Check if servo_id is PAN or TILT and clamp goal_position accordingly
-        if servo_id == self.PAN_SERVO_ID:
-            goal_position = self.clamp_servo_position(goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
-        elif servo_id == self.TILT_SERVO_ID:
-            goal_position = self.clamp_servo_position(goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
-
+        try:
+            # Check if servo_id is PAN or TILT and clamp goal_position accordingly
+            if servo_id == self.PAN_SERVO_ID:
+                if not (self.PAN_MIN_POSITION <= goal_position <= self.PAN_MAX_POSITION):
+                    print(f"Error: The calculated goal position for the PAN servo is {goal_position}. It should be between {self.PAN_MIN_POSITION} and {self.PAN_MAX_POSITION}. Adjusting to closest valid value.")
+                    goal_position = self.clamp_servo_position(goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
+                print(f"Setting PAN goal position to: {goal_position}")
+            elif servo_id == self.TILT_SERVO_ID:
+                if not (self.TILT_MIN_POSITION <= goal_position <= self.TILT_MAX_POSITION):
+                    print(f"Error: The calculated goal position for the TILT servo is {goal_position}. It should be between {self.TILT_MIN_POSITION} and {self.TILT_MAX_POSITION}. Adjusting to closest valid value.")
+                    goal_position = self.clamp_servo_position(goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
+                print(f"Setting TILT goal position to: {goal_position}")
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+    
         # Ensure goal_position is within valid range [0, 4095]
-        goal_position = min(max(goal_position, 0), 4095)
-
-        # Allocate goal position values into byte array for servo
-        param_goal_position = [
-            goal_position & 0xFF,
-            (goal_position >> 8) & 0xFF,
-            (goal_position >> 16) & 0xFF,
-            (goal_position >> 24) & 0xFF
-        ]
-
-        # Add goal position value for servo
-        self.groupSyncWrite.addParam(servo_id, param_goal_position)
-
-        # Execute SyncWrite
-        dxl_comm_result = self.groupSyncWrite.txPacket()
+        if not (0 <= goal_position <= 4095):
+            print(f"Error: The goal position is out of range. {goal_position} It should be between 0 and 4095.")
+        goal_position = int(min(max(goal_position, 0), 4095))
+    
+        # Get the current position of the servo
+        present_position = self.get_present_position()
+        if servo_id == self.PAN_SERVO_ID:
+            print(f"Current position of PAN servo: {present_position[0]}")
+        elif servo_id == self.TILT_SERVO_ID:
+            print(f"Current position of TILT servo: {present_position[1]}")
+    
+        # Write goal position
+        dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, servo_id, self.ADDR_MX_GOAL_POSITION, goal_position)
         if dxl_comm_result != self.COMM_SUCCESS:
-            raise Exception("Error occurred while setting goal position")
-
-        # Clear syncwrite parameter storage
-        self.groupSyncWrite.clearParam()
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
 
     def get_present_position(self):
         # Syncread present position

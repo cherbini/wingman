@@ -6,8 +6,8 @@ class CoordinateSystem:
     # Define class constants
     CAMERA_FOCAL_LENGTH_MM = 4.74
     CAMERA_PIXEL_SIZE_MM = 0.0008
-    PAN_SERVO_MAX_ANGLE_DEG = 180
-    TILT_SERVO_MAX_ANGLE_DEG = 180
+    PAN_SERVO_MAX_ANGLE_DEG = 90
+    TILT_SERVO_MAX_ANGLE_DEG = 90
     IMAGE_WIDTH_PIXELS = 416
     IMAGE_HEIGHT_PIXELS = 416
     IMAGE_CENTER_X = IMAGE_WIDTH_PIXELS // 2
@@ -64,7 +64,7 @@ class CoordinateSystem:
         return pan_command, tilt_command
 
     @staticmethod
-    def image_position_to_servo_goal(self, img_pos, img_size, servo_min, servo_max):
+    def image_position_to_servo_goal(img_pos, img_size, servo_min, servo_max):
         """
         Translate a position in the image (e.g., the center of a bounding box) to a goal position for a servo.
         img_pos is the position in the image (either x or y coordinate).

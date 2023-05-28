@@ -82,7 +82,7 @@ class MotionTracker:
                 if inRgb is not None:
                     frame = inRgb.getCvFrame()
                     cv2.putText(frame, "NN fps: {:.2f}".format(counter / (time.monotonic() - startTime)),
-                                (2, frame.shape[0] - 4), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
+                                (2, frame.shape[0] - 1), cv2.FONT_HERSHEY_TRIPLEX, 0.4, color2)
 
                 if inDet is not None:
                     detections = inDet.detections
