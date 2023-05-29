@@ -171,9 +171,6 @@ class Application:
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     tags = self.april_detector.detect(gray)
 
-                    for tag in tags:
-                        cv2.polylines(frame, [np.int32(tag.corners)], isClosed=True, color=(0,255,0))
-
                     # Filter detections based on confidence
                     detections = [d for d in detections if d.confidence >= confidence_threshold]
         
@@ -187,6 +184,36 @@ class Application:
                         for detection in detections:
                             detection.ymin, detection.ymax = 1 - detection.ymin, 1 - detection.ymax
         
+                    if tags:
+    # There are AprilTags detected, so give them priority
+                        # Note: for simplicity, we'll just track the first detected tag
+                        # Assume that flip_horizontal and flip_vertical are Boolean variables that indicate whether the image is flipped
+
+                        tag = tags[0]  # The first detected AprilTag
+
+                        # Get the bounding box corners
+                        corners = tag.corners
+
+                        # Flip the corners horizontally if the image is flipped horizontally
+                        if flip_horizontal:
+                            corners[:, 0] = frame.shape[1] - corners[:, 0]
+
+                        # Flip the corners vertically if the image is flipped vertically
+                        if flip_vertical:
+                            corners[:, 1] = frame.shape[0] - corners[:, 1]
+
+                        # Draw the bounding box
+                        cv2.polylines(frame, [np.int32(corners)], isClosed=True, color=(0,255,0))
+
+                    else:
+                        # No AprilTags detected, so fall back to person detection
+                        if detections:
+                            # Get the most confident detection
+                            most_confident_detection = detections[0]
+                            # Calculate centroid
+                            centroid = ((most_confident_detection.xmax + most_confident_detection.xmin) / 2, (most_confident_detection.ymax + most_confident_detection.ymin) / 2)
+                    
+                                            
         
                     if detections:
 
