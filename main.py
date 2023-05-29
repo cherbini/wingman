@@ -3,8 +3,7 @@
 import time
 import cv2
 import numpy as np
-import tkinter as tk
-from tkinter import simpledialog
+import apriltag
 from dynamixel_controller import DynamixelController
 from motion_tracker import MotionTracker
 from coordinate_system import CoordinateSystem
@@ -56,6 +55,8 @@ class Application:
         print("Home Position: {self.home_position}")
         self.last_detection_time = time.time()
         self.last_positions = []
+        self.april_detector = apriltag.Detector()
+
     def save_settings(self, value):
         if value == 1:  # Only save when the trackbar is set to 1
             settings = {}
@@ -63,7 +64,6 @@ class Application:
                 settings[setting] = cv2.getTrackbarPos(setting, "Settings")
             with open("settings.json", "w") as f:
                 json.dump(settings, f)
-            # Optionally reset the "Save Settings" trackbar to 0 here
     
     def load_settings(self, value):
         if value == 1:  # Only load when the trackbar is set to 1
@@ -77,6 +77,8 @@ class Application:
     def run(self):
         pan_goal = None
         tilt_goal = None
+        last_centroid = None
+        last_prediction = None
         last_detection_time = None
         try:
             self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
@@ -166,6 +168,12 @@ class Application:
                         # You may want to set a default value here
                         reverse_tilt = 0
 
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    tags = self.april_detector.detect(gray)
+
+                    for tag in tags:
+                        cv2.polylines(frame, [np.int32(tag.corners)], isClosed=True, color=(0,255,0))
+
                     # Filter detections based on confidence
                     detections = [d for d in detections if d.confidence >= confidence_threshold]
         
@@ -200,6 +208,8 @@ class Application:
 
                             # Calculate centroid
                             centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+                            last_centroid = centroid
+
                             print(f"Centroid: {centroid}")
                             # Draw a green dot on the centroid
                             centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
@@ -220,6 +230,8 @@ class Application:
 
                                 # Draw prediction
                                 prediction_px = (int(prediction[0]), int(prediction[1]))
+                                last_prediction = prediction_px
+
                                 cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
                             
                                 if bbox is not None:
@@ -245,7 +257,15 @@ class Application:
                                         # Use predicted position as if it was a real detection
                                         centroid = (predicted_x_pixels, predicted_y_pixels)
                             else:
-                                continue
+                                # If we have a last known centroid, draw it
+                                if last_centroid is not None:
+                                    last_centroid_px = (int(last_centroid[0] * frame.shape[1]), int(last_centroid[1] * frame.shape[0]))
+                                    cv2.circle(frame, last_centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
+                 
+                                # If we have a last known prediction, draw it
+                                if last_prediction is not None:
+                                     cv2.circle(frame, last_prediction, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+
 
                         # Set goal position for servos, even if no new detections have been made
                         if centroid is not None:
@@ -312,7 +332,6 @@ class Application:
                         # Break if 'q' is pressed
                         if cv2.waitKey(1) == ord('q'):
                             break
-
 
             except cv2.error as e:
                 print(f"A cv2.error occurred: {e}")
