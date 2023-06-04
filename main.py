@@ -28,7 +28,7 @@ class Application:
         cv2.namedWindow("Settings")
         cv2.createTrackbar("Flip Horizontal Image", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Flip Vertical Image", "Settings", 1, 1, nothing)
-        cv2.createTrackbar("Servo Speed", "Settings", 800, 1023, nothing)  # Default speed is 512, maximum is 1023
+        cv2.createTrackbar("Servo Speed", "Settings", 500, 1023, nothing)  # Default speed is 512, maximum is 1023
         cv2.createTrackbar("Lead Time", "Settings", 1, 5, nothing)
         cv2.createTrackbar("Confidence", "Settings", 65, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
         cv2.createTrackbar("Servo Scale", "Settings", 100 , 100, nothing)
@@ -46,7 +46,11 @@ class Application:
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 1e-2
+        process_noise_cov = 1e-5
+        measurement_noise_cov = 1e-4
+        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
+        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
+
         self.MAX_VALID_PREDICTION = 1000
         self.MIN_VALID_PREDICTION = 0
 
@@ -55,7 +59,9 @@ class Application:
         print("Home Position: {self.home_position}")
         self.last_detection_time = time.time()
         self.last_positions = []
+
         self.april_detector = apriltag.Detector()
+        self.april_tag_visible = False
 
     def get_trackbar_position(self, name, window="Settings", default_value=0):
         try:
@@ -109,8 +115,10 @@ class Application:
                     flip_vertical = self.get_trackbar_position("Flip Vertical Image", window="Settings", default_value=0)
                     confidence_threshold = self.get_trackbar_position("Confidence", window="Settings", default_value=70) / 100.0
                     servo_scale = self.get_trackbar_position("Servo Scale", window="Settings", default_value=0) / 100.0
-                    process_noise_cov = self.get_trackbar_position("Process Noise Cov", window="Settings", default_value=0) * 1e-2
-                    measurement_noise_cov = self.get_trackbar_position("Measurement Noise Cov", window="Settings", default_value=0) * 1e-2
+                    #process_noise_cov = self.get_trackbar_position("Process Noise Cov", window="Settings", default_value=0) * 1e-2
+                    #measurement_noise_cov = self.get_trackbar_position("Measurement Noise Cov", window="Settings", default_value=0) * 1e-2
+                    process_noise_cov = self.get_trackbar_position("Process Noise Cov", window="Settings", default_value=0)
+                    measurement_noise_cov = self.get_trackbar_position("Measurement Noise Cov", window="Settings", default_value=0)
                     show_frame = self.get_trackbar_position("Show Frame", window="Settings", default_value=1)
                     servo_speed = self.get_trackbar_position("Servo Speed", window="Settings", default_value=512)
                     reverse_pan = self.get_trackbar_position("Reverse Pan", window="Settings", default_value=0)
@@ -135,180 +143,208 @@ class Application:
                             detection.ymin, detection.ymax = 1 - detection.ymin, 1 - detection.ymax
         
                     if tags:
-    # There are AprilTags detected, so give them priority
-                        # Note: for simplicity, we'll just track the first detected tag
-                        # Assume that flip_horizontal and flip_vertical are Boolean variables that indicate whether the image is flipped
-
-                        tag = tags[0]  # The first detected AprilTag
-
-                        # Get the bounding box corners
+                        # There are AprilTags detected, so give them priority
+                        self.april_tag_visible = True
+                    
+                        # Track the first detected AprilTag
+                        tag = tags[0]
                         corners = tag.corners
-
+                    
                         # Flip the corners horizontally if the image is flipped horizontally
                         if flip_horizontal:
                             corners[:, 0] = frame.shape[1] - corners[:, 0]
-
+                    
                         # Flip the corners vertically if the image is flipped vertically
                         if flip_vertical:
                             corners[:, 1] = frame.shape[0] - corners[:, 1]
-
+                    
                         # Draw the bounding box
-                        cv2.polylines(frame, [np.int32(corners)], isClosed=True, color=(0,255,0))
-
-                    else:
-                        # No AprilTags detected, so fall back to person detection
-                        if detections:
-                            # Get the most confident detection
-                            most_confident_detection = detections[0]
-                            # Calculate centroid
-                            centroid = ((most_confident_detection.xmax + most_confident_detection.xmin) / 2, (most_confident_detection.ymax + most_confident_detection.ymin) / 2)
+                        cv2.polylines(frame, [np.int32(corners)], isClosed=True, color=(0, 255, 0))
                     
-                                            
-        
-                    if detections:
-
-                        last_detection_time = time.time()
-                        centroid = (0.5, 0.5)
-                        # Sort detections by confidence
-                        detections.sort(key=lambda detection: detection.confidence, reverse=True)
-
-                        # Take the most confident detection
-                        most_confident_detection = detections[0]
-                        # Now, handle only the most_confident_detection
-                        if most_confident_detection.label == 0:
-                            # Print class label
-                            print(f"Label: {detection.label}")
-
-                            # Get bounding box coordinates
-                            bbox = [detection.xmin, detection.ymin, detection.xmax, detection.ymax]
-                            print(f"Bounding Box: {bbox}")
-
-                            # Calculate centroid
-                            centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
-                            last_centroid = centroid
-
-                            print(f"Centroid: {centroid}")
-                            # Draw a green dot on the centroid
-                            centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
-                            cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
-                            # Update Kalman filter
-                            self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
-                            self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
-
-                            centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
-                            self.kalman.correct(centroid)
-
-                            prediction = self.kalman.predict()
-
-                            print(f"Kalman prediction: {prediction}")
-
-
-                            if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
-
-                                # Draw prediction
-                                prediction_px = (int(prediction[0]), int(prediction[1]))
-                                last_prediction = prediction_px
-
-                                cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
-                            
-                                if bbox is not None:
-                                    # Calculate centroid
-                                    centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
-    
-                                    # Calculate velocity
-                                    if prev_x_pixels is not None and prev_y_pixels is not None:
-                                        prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
-                                            centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
-                                        )
-                            
-                                    # Update previous position
-                                    prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
-                            
-                                else:
-                                    # Detection lost
-                                    if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
-                                        # Predict new position based on last known velocity
-                                        predicted_x_pixels = prev_x_pixels + prev_vx_pixels
-                                        predicted_y_pixels = prev_y_pixels + prev_vy_pixels
-                            
-                                        # Use predicted position as if it was a real detection
-                                        centroid = (predicted_x_pixels, predicted_y_pixels)
-                            else:
-                                # If we have a last known centroid, draw it
-                                if last_centroid is not None:
-                                    last_centroid_px = (int(last_centroid[0] * frame.shape[1]), int(last_centroid[1] * frame.shape[0]))
-                                    cv2.circle(frame, last_centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
-                 
-                                # If we have a last known prediction, draw it
-                                if last_prediction is not None:
-                                     cv2.circle(frame, last_prediction, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
-
-
-                        # Set goal position for servos, even if no new detections have been made
-                        if centroid is not None:
-                            pan_goal = self.coordinate_system.image_position_to_servo_goal(
-                                1 - centroid[0] if reverse_pan else centroid[0],
-                                1,  # image_max for x coord
-                                self.dynamixel_controller.PAN_MIN_POSITION,
-                                self.dynamixel_controller.PAN_MAX_POSITION
-                            ) * servo_scale
-                
-                            tilt_goal = self.coordinate_system.image_position_to_servo_goal(
-                                1 - centroid[1] if reverse_tilt else centroid[1],
-                                1,  # image_max for Y coord
-                                self.dynamixel_controller.TILT_MIN_POSITION,
-                                self.dynamixel_controller.TILT_MAX_POSITION
-                            ) * servo_scale
-
-                        # Set the servo speed
-                        try:
-                            self.dynamixel_controller.set_speed(self.dynamixel_controller.PAN_SERVO_ID, servo_speed)
-                        except Exception as e:
-                            print(f"Failed to set PAN servo speed: {e}")
+                        # Calculate centroid
+                        centroid = np.mean(corners, axis=0)
+                        centroid = centroid.astype(np.float32)  # Convert centroid matrix to float32
+                        print(f"Type of centroid matrix: {centroid.dtype}")
+                        print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}")
+                        print(f"Dimensions of measurementMatrix: {self.kalman.measurementMatrix.shape}")
+                        print(f"Dimensions of centroid: {centroid.shape}")
+                    
+                        # Convert centroid to pixel coordinates
+                        centroid_px = (int(centroid[0]), int(centroid[1]))
+                    
+                        # Ensure centroid is within frame boundaries
+                        centroid_px = (max(0, min(frame.shape[1]-1, centroid_px[0])),
+                                       max(0, min(frame.shape[0]-1, centroid_px[1])))
+                    
+                        # Draw a green dot on the centroid
+                        cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)
+                    
+                        # Update Kalman filter
+                    #    self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
+                    #    self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
+                    
+                        self.kalman.correct(centroid)
+                    
+                        prediction = self.kalman.predict()
+                    
+                        # Draw prediction
+                        prediction_px = (int(prediction[0]), int(prediction[1]))
+                        cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)
+                    
+                        # Calculate velocity
+                        if prev_x_pixels is not None and prev_y_pixels is not None:
+                            prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
+                                centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2
+                            )
                         
-                        try:
-                            self.dynamixel_controller.set_speed(self.dynamixel_controller.TILT_SERVO_ID, servo_speed)
-                        except Exception as e:
-                            print(f"Failed to set TILT servo speed: {e}")
+                        # Update previous position
+                        prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
+                        
+                    else:
+                        self.april_tag_visible = False
+                        # No AprilTags detected, handle accordingly
+    
+                        if detections:
 
-                        self.dynamixel_controller.set_speed(self.dynamixel_controller.PAN_SERVO_ID, servo_speed)
-                        self.dynamixel_controller.set_speed(self.dynamixel_controller.TILT_SERVO_ID, servo_speed)
-                
-                        # Set servo goal positions
-                        if pan_goal is not None and tilt_goal is not None:
-                            pan_goal = self.dynamixel_controller.clamp_servo_position(
-                                pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION
-                            )
-                            tilt_goal = self.dynamixel_controller.clamp_servo_position(
-                                tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION
-                            )
-
-                            try:
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
-                            except RxPacketError:
-                                print("Error: The dara value exceeds the limit value.")
-                                continue
-
-                
-                        # If no detection for the last 3 seconds, move servos back to home position
-                        if last_detection_time and time.time() - last_detection_time > 3.0:
-                            if self.home_position is not None:
-                                pan_home, tilt_home = self.home_position
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_home)
-                                self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_home)
-                            else:
-                                print("Home position not set. Unable to return to home position.") 
-
-                        # Display the frame
-                        if show_frame:
-                            cv2.imshow("Frame", frame)
-                        else:
-                            cv2.destroyWindow("Frame")
+                            last_detection_time = time.time()
+                            centroid = (0.5, 0.5)
+                            # Sort detections by confidence
+                            detections.sort(key=lambda detection: detection.confidence, reverse=True)
+    
+                            # Take the most confident detection
+                            most_confident_detection = detections[0]
+                            # Now, handle only the most_confident_detection
+                            if most_confident_detection.label == 0:
+                                # Print class label
+                                print(f"Label: {detection.label}")
+    
+                                # Get bounding box coordinates
+                                bbox = [detection.xmin, detection.ymin, detection.xmax, detection.ymax]
+                                print(f"Bounding Box: {bbox}")
+    
+                                # Calculate centroid
+                                centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+                                last_centroid = centroid
+    
+                                print(f"Centroid: {centroid}")
+                                # Draw a green dot on the centroid
+                                centroid_px = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))  # Convert normalized coordinates to pixel coordinates
+                                cv2.circle(frame, centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
+                                # Update Kalman filter
+                                self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * process_noise_cov
+                                self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * measurement_noise_cov
+    
+                                centroid = np.array([[np.float32(centroid_px[0])], [np.float32(centroid_px[1])]])  # Convert to column vector
+                                self.kalman.correct(centroid)
+    
+                                prediction = self.kalman.predict()
+    
+                                print(f"Kalman prediction: {prediction}")
+    
+    
+                                if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
+    
+                                    # Draw prediction
+                                    prediction_px = (int(prediction[0]), int(prediction[1]))
+                                    last_prediction = prediction_px
+    
+                                    cv2.circle(frame, prediction_px, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+                                
+                                    if bbox is not None:
+                                        # Calculate centroid
+                                        centroid = ((detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2)
+        
+                                        # Calculate velocity
+                                        if prev_x_pixels is not None and prev_y_pixels is not None:
+                                            prev_vx_pixels, prev_vy_pixels = self.coordinate_system.calculate_velocity(
+                                                centroid[0], centroid[1], prev_x_pixels, prev_y_pixels, dt=2  # Assuming dt=1 for this example
+                                            )
+                                
+                                        # Update previous position
+                                        prev_x_pixels, prev_y_pixels = centroid[0], centroid[1]
+                                
+                                    else:
+                                        # Detection lost
+                                        if prev_x_pixels is not None and prev_y_pixels is not None and prev_vx_pixels is not None and prev_vy_pixels is not None:
+                                            # Predict new position based on last known velocity
+                                            predicted_x_pixels = prev_x_pixels + prev_vx_pixels
+                                            predicted_y_pixels = prev_y_pixels + prev_vy_pixels
+                                
+                                            # Use predicted position as if it was a real detection
+                                            centroid = (predicted_x_pixels, predicted_y_pixels)
+                                else:
+                                    # If we have a last known centroid, draw it
+                                    if last_centroid is not None:
+                                        last_centroid_px = (int(last_centroid[0] * frame.shape[1]), int(last_centroid[1] * frame.shape[0]))
+                                        cv2.circle(frame, last_centroid_px, 5, (0, 255, 0), -1)  # Draw a green dot with radius 5
+                     
+                                    # If we have a last known prediction, draw it
+                                    if last_prediction is not None:
+                                         cv2.circle(frame, last_prediction, 5, (255, 0, 0), -1)  # Draw a blue dot at the predicted position
+    
+    
+                            # Set goal position for servos, even if no new detections have been made
+                            if centroid is not None:
+                                pan_goal = self.coordinate_system.image_position_to_servo_goal(
+                                    1 - centroid[0] if reverse_pan else centroid[0],
+                                    1,  # image_max for x coord
+                                    self.dynamixel_controller.PAN_MIN_POSITION,
+                                    self.dynamixel_controller.PAN_MAX_POSITION
+                                ) * servo_scale
                     
-                        # Break if 'q' is pressed
-                        if cv2.waitKey(1) == ord('q'):
-                            break
+                                tilt_goal = self.coordinate_system.image_position_to_servo_goal(
+                                    1 - centroid[1] if reverse_tilt else centroid[1],
+                                    1,  # image_max for Y coord
+                                    self.dynamixel_controller.TILT_MIN_POSITION,
+                                    self.dynamixel_controller.TILT_MAX_POSITION
+                                ) * servo_scale
+    
+                            # Set the servo speed
+                            try:
+                                self.dynamixel_controller.set_speed(self.dynamixel_controller.PAN_SERVO_ID, servo_speed)
+                            except Exception as e:
+                                print(f"Failed to set PAN servo speed: {e}")
+                            
+                            try:
+                                self.dynamixel_controller.set_speed(self.dynamixel_controller.TILT_SERVO_ID, servo_speed)
+                            except Exception as e:
+                                print(f"Failed to set TILT servo speed: {e}")
+    
+                            # Set servo goal positions
+                            if pan_goal is not None and tilt_goal is not None:
+                                pan_goal = self.dynamixel_controller.clamp_servo_position(
+                                    pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION
+                                )
+                                tilt_goal = self.dynamixel_controller.clamp_servo_position(
+                                    tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION
+                                )
+    
+                                try:
+                                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
+                                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
+                                except RxPacketError:
+                                    print("Error: The data value exceeds the limit value.")
+                                    continue
+    
+                    
+                            # If no detection for the last 3 seconds, move servos back to home position
+                            #if last_detection_time and time.time() - last_detection_time > 3.0:
+                            #    if self.home_position is not None:
+                            #        pan_home, tilt_home = self.home_position
+                            #        self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_home)
+                            #        self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_home)
+                            #    else:
+                            #        print("Home position not set. Unable to return to home position.") 
+    
+                    # Display the frame
+                    if show_frame:
+                        cv2.imshow("Frame", frame)
+                    else:
+                        cv2.destroyWindow("Frame")
+                    
+                    # Break if 'q' is pressed
+                    if cv2.waitKey(1) == ord('q'):
+                        break
 
             except cv2.error as e:
                 print(f"A cv2.error occurred: {e}")

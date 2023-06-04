@@ -5,9 +5,9 @@ class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
     PAN_MIN_POSITION = 0  # Adjust as needed
-    PAN_MAX_POSITION = 4095  # Adjust as needed
-    TILT_MIN_POSITION = 1500 # Adjust as needed
-    TILT_MAX_POSITION = 2100  # Adjust as needed
+    PAN_MAX_POSITION = 4096  # Adjust as needed
+    TILT_MIN_POSITION = 0 # Adjust as needed
+    TILT_MAX_POSITION = 4096  # Adjust as needed
     PAN_CENTER_POSITION = 2048
     TILT_CENTER_POSITION = 2048
 
@@ -93,9 +93,9 @@ class DynamixelController:
                 goal_position = self.adjust_goal_position(servo_id, goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
                 print(f"Setting TILT goal position to: {goal_position}")
     
-            if not (0 <= goal_position <= 4095):
+            if not (0 <= goal_position <= 4096):
                 print(f"Error: The goal position is out of range. {goal_position}. It should be between 0 and 4095.")
-            goal_position = int(min(max(goal_position, 0), 4095))
+            goal_position = int(min(max(goal_position, 0), 4096))
     
             present_position = self.get_present_position()
             if servo_id == self.PAN_SERVO_ID:
@@ -139,7 +139,7 @@ class DynamixelController:
     def servo_test(self):
         # Define the square path for the servos
         pan_offset = 1000
-        tilt_offset = 100
+        tilt_offset = 300
         pan_positions = [self.PAN_CENTER_POSITION, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION]
         tilt_positions = [self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION - tilt_offset, self.TILT_CENTER_POSITION]
 
