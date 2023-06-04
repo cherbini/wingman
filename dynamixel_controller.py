@@ -6,10 +6,10 @@ class DynamixelController:
     # Define valid ranges for PAN and TILT servos
     PAN_MIN_POSITION = 0  # Adjust as needed
     PAN_MAX_POSITION = 4095  # Adjust as needed
-    TILT_MIN_POSITION = 0 # Adjust as needed
-    TILT_MAX_POSITION = 4095  # Adjust as needed
+    TILT_MIN_POSITION = 1000 # Adjust as needed
+    TILT_MAX_POSITION = 2000  # Adjust as needed
     PAN_CENTER_POSITION = 2048
-    TILT_CENTER_POSITION = 2048
+    TILT_CENTER_POSITION = 1500
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -140,9 +140,9 @@ class DynamixelController:
     def servo_test(self):
         # Define the square path for the servos
         pan_offset = 1000
-        tilt_offset = 1000
-        pan_positions = [2048, 2048 + pan_offset, 2048 + pan_offset, 2048 - pan_offset, 2048 - pan_offset, 2048]
-        tilt_positions = [2048, 2048, 2048 + tilt_offset, 2048 + tilt_offset, 2048 - tilt_offset, 2048]
+        tilt_offset = 200
+        pan_positions = [self.PAN_CENTER_POSITION, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION]
+        tilt_positions = [self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION - tilt_offset, self.TILT_CENTER_POSITION]
 
         # Move the servos in the square path
         for pan_pos, tilt_pos in zip(pan_positions, tilt_positions):

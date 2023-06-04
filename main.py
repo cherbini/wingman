@@ -28,12 +28,12 @@ class Application:
         cv2.namedWindow("Settings")
         cv2.createTrackbar("Flip Horizontal Image", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Flip Vertical Image", "Settings", 1, 1, nothing)
-        cv2.createTrackbar("Servo Speed", "Settings", 512, 1023, nothing)  # Default speed is 512, maximum is 1023
-        cv2.createTrackbar("Lead Time", "Settings", 5, 10, nothing)
+        cv2.createTrackbar("Servo Speed", "Settings", 800, 1023, nothing)  # Default speed is 512, maximum is 1023
+        cv2.createTrackbar("Lead Time", "Settings", 1, 5, nothing)
         cv2.createTrackbar("Confidence", "Settings", 65, 100, nothing)  # Let's say default confidence is 50%, and maximum is 100%
-        cv2.createTrackbar("Servo Scale", "Settings", 90 , 100, nothing)
-        cv2.createTrackbar("Process Noise Cov", "Settings", 30, 100, nothing)
-        cv2.createTrackbar("Measurement Noise Cov", "Settings", 0, 100, nothing)
+        cv2.createTrackbar("Servo Scale", "Settings", 100 , 100, nothing)
+        cv2.createTrackbar("Process Noise Cov", "Settings", 1, 10, nothing)
+        cv2.createTrackbar("Measurement Noise Cov", "Settings", 3, 10, nothing)
         cv2.createTrackbar("Show Frame", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Reverse Pan", "Settings", 0, 1, nothing)
         cv2.createTrackbar("Reverse Tilt", "Settings", 0, 1, nothing)
@@ -56,6 +56,14 @@ class Application:
         self.last_detection_time = time.time()
         self.last_positions = []
         self.april_detector = apriltag.Detector()
+
+    def get_trackbar_position(self, name, window="Settings", default_value=0):
+        try:
+            return cv2.getTrackbarPos(name, window)
+        except Exception as e:
+            print(f"An error occurred while adjusting the {name} slider: {e}")
+            return default_value
+
 
     def save_settings(self, value):
         if value == 1:  # Only save when the trackbar is set to 1
@@ -96,77 +104,19 @@ class Application:
         while True:
             try:
                 for frame, detections in self.motion_tracker.run():
-                    try:
-                        lead_time = cv2.getTrackbarPos("Lead Time", "Settings") / 10.0
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Lead Time slider: {e}")
-                        # You may want to set a default value here
-                        lead_time = 0
-                    try:
-                        flip_horizontal = cv2.getTrackbarPos("Flip Horizontal", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Flip Horizonzal slider: {e}")
-                        # You may want to set a default value here
-                        flip_horizontal = 0
+                    lead_time = self.get_trackbar_position("Lead Time", window="Settings", default_value=0) / 10.0
+                    flip_horizontal = self.get_trackbar_position("Flip Horizontal Image", window="Settings", default_value=0)
+                    flip_vertical = self.get_trackbar_position("Flip Vertical Image", window="Settings", default_value=0)
+                    confidence_threshold = self.get_trackbar_position("Confidence", window="Settings", default_value=70) / 100.0
+                    servo_scale = self.get_trackbar_position("Servo Scale", window="Settings", default_value=0) / 100.0
+                    process_noise_cov = self.get_trackbar_position("Process Noise Cov", window="Settings", default_value=0) * 1e-2
+                    measurement_noise_cov = self.get_trackbar_position("Measurement Noise Cov", window="Settings", default_value=0) * 1e-2
+                    show_frame = self.get_trackbar_position("Show Frame", window="Settings", default_value=1)
+                    servo_speed = self.get_trackbar_position("Servo Speed", window="Settings", default_value=512)
+                    reverse_pan = self.get_trackbar_position("Reverse Pan", window="Settings", default_value=0)
+                    reverse_tilt = self.get_trackbar_position("Reverse Tilt", window="Settings", default_value=0)
 
-                    try:
-                        flip_vertical = cv2.getTrackbarPos("Flip Vertical", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Flip Vertical slider: {e}")
-                        # You may want to set a default value here
-                        flip_vertical = 0
-                    try:
-                        confidence_threshold = cv2.getTrackbarPos("Confidence", "Settings") / 100.0  # Convert to a value between 0 and 1
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Confidence slider: {e}")
-                        # You may want to set a default value here
-                        confidence_threshold = 0.7
 
-                    try:
-                        servo_scale = cv2.getTrackbarPos("Servo Scale", "Settings") / 100.0  # Convert to a value between 0 and 1
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Servo Scale slider: {e}")
-                        # You may want to set a default value here
-                        servo_scale = 0
-                    try:
-                        process_noise_cov = cv2.getTrackbarPos("Process Noise Cov", "Settings") * 1e-2  # Scale appropriately
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Process Noise Cov slider: {e}")
-                        # You may want to set a default value here
-                        process_noise_cov = 0.3
-
-                    try:
-                        measurement_noise_cov = cv2.getTrackbarPos("Measurement Noise Cov", "Settings") * 1e-2  # Scale appropriately
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Measurement Noise Cov slider: {e}")
-                        # You may want to set a default value here
-                        measurement_noise_cov = 0
-                    try:
-                        show_frame = cv2.getTrackbarPos("Show Frame", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Show Frame slider: {e}")
-                        # You may want to set a default value here
-                        show_Frame = 1
-                    
-                    try:
-                        servo_speed = cv2.getTrackbarPos("Servo Speed", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Servo Speed slider: {e}")
-                        # You may want to set a default value here
-                        servo_speed = 512
-                    try:
-                        reverse_pan = cv2.getTrackbarPos("Reverse Pan", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Reverse Pan slider: {e}")
-                        # You may want to set a default value here
-                        reverse_pan = 0
-                    
-                    try:
-                        reverse_tilt = cv2.getTrackbarPos("Reverse Tilt", "Settings")
-                    except Exception as e:
-                        print(f"An error occurred while adjusting the Reverse Tilt slider: {e}")
-                        # You may want to set a default value here
-                        reverse_tilt = 0
 
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                     tags = self.april_detector.detect(gray)
