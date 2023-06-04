@@ -6,10 +6,10 @@ class DynamixelController:
     # Define valid ranges for PAN and TILT servos
     PAN_MIN_POSITION = 0  # Adjust as needed
     PAN_MAX_POSITION = 4095  # Adjust as needed
-    TILT_MIN_POSITION = 1000 # Adjust as needed
-    TILT_MAX_POSITION = 2000  # Adjust as needed
+    TILT_MIN_POSITION = 1500 # Adjust as needed
+    TILT_MAX_POSITION = 2100  # Adjust as needed
     PAN_CENTER_POSITION = 2048
-    TILT_CENTER_POSITION = 1500
+    TILT_CENTER_POSITION = 2048
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -78,40 +78,39 @@ class DynamixelController:
         elif dxl_error != 0:
             print("%s" % self.packetHandler.getRxPacketError(dxl_error))
 
+    def adjust_goal_position(self, servo_id, goal_position, min_position, max_position):
+        if not (min_position <= goal_position <= max_position):
+            print(f"Error: The calculated goal position for the servo {servo_id} is {goal_position}. It should be between {min_position} and {max_position}. Adjusting to closest valid value.")
+            goal_position = self.clamp_servo_position(goal_position, min_position, max_position)
+        return goal_position
+
     def set_goal_position(self, servo_id, goal_position):
         try:
-            # Check if servo_id is PAN or TILT and clamp goal_position accordingly
             if servo_id == self.PAN_SERVO_ID:
-                if not (self.PAN_MIN_POSITION <= goal_position <= self.PAN_MAX_POSITION):
-                    print(f"Error: The calculated goal position for the PAN servo is {goal_position}. It should be between {self.PAN_MIN_POSITION} and {self.PAN_MAX_POSITION}. Adjusting to closest valid value.")
-                    goal_position = self.clamp_servo_position(goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
+                goal_position = self.adjust_goal_position(servo_id, goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
                 print(f"Setting PAN goal position to: {goal_position}")
             elif servo_id == self.TILT_SERVO_ID:
-                if not (self.TILT_MIN_POSITION <= goal_position <= self.TILT_MAX_POSITION):
-                    print(f"Error: The calculated goal position for the TILT servo is {goal_position}. It should be between {self.TILT_MIN_POSITION} and {self.TILT_MAX_POSITION}. Adjusting to closest valid value.")
-                    goal_position = self.clamp_servo_position(goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
+                goal_position = self.adjust_goal_position(servo_id, goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
                 print(f"Setting TILT goal position to: {goal_position}")
+    
+            if not (0 <= goal_position <= 4095):
+                print(f"Error: The goal position is out of range. {goal_position}. It should be between 0 and 4095.")
+            goal_position = int(min(max(goal_position, 0), 4095))
+    
+            present_position = self.get_present_position()
+            if servo_id == self.PAN_SERVO_ID:
+                print(f"Current position of PAN servo: {present_position[0]}")
+            elif servo_id == self.TILT_SERVO_ID:
+                print(f"Current position of TILT servo: {present_position[1]}")
+    
+            dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, servo_id, self.ADDR_MX_GOAL_POSITION, goal_position)
+            if dxl_comm_result != self.COMM_SUCCESS:
+                print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+            elif dxl_error != 0:
+                print("%s" % self.packetHandler.getRxPacketError(dxl_error))
+    
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-    
-        # Ensure goal_position is within valid range [0, 4095]
-        if not (0 <= goal_position <= 4095):
-            print(f"Error: The goal position is out of range. {goal_position} It should be between 0 and 4095.")
-        goal_position = int(min(max(goal_position, 0), 4095))
-    
-        # Get the current position of the servo
-        present_position = self.get_present_position()
-        if servo_id == self.PAN_SERVO_ID:
-            print(f"Current position of PAN servo: {present_position[0]}")
-        elif servo_id == self.TILT_SERVO_ID:
-            print(f"Current position of TILT servo: {present_position[1]}")
-    
-        # Write goal position
-        dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, servo_id, self.ADDR_MX_GOAL_POSITION, goal_position)
-        if dxl_comm_result != self.COMM_SUCCESS:
-            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-        elif dxl_error != 0:
-            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
 
     def get_present_position(self):
         # Syncread present position
@@ -140,7 +139,7 @@ class DynamixelController:
     def servo_test(self):
         # Define the square path for the servos
         pan_offset = 1000
-        tilt_offset = 200
+        tilt_offset = 100
         pan_positions = [self.PAN_CENTER_POSITION, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION]
         tilt_positions = [self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION - tilt_offset, self.TILT_CENTER_POSITION]
 
