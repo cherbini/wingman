@@ -3,6 +3,7 @@
 
 from pyPS4Controller.controller import Controller
 from dynamixel_sdk import *
+import Jetson.GPIO as GPIO  # New Import
 
 # Definitions from your previous code...
 ADDR_PRESENT_POSITION = 132
@@ -19,6 +20,11 @@ DEVICENAME = '/dev/ttyDXL'
 TORQUE_ENABLE = 1
 TORQUE_DISABLE = 0
 DXL_MOVING_STATUS_THRESHOLD = 20
+RELAY_PIN = 7
+
+# Initialize the GPIO pin for the relay
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(RELAY_PIN, GPIO.OUT, initial=GPIO.LOW)
 
 # Dynamixel controller setup
 portHandler = PortHandler(DEVICENAME)
@@ -63,6 +69,11 @@ class MyController(Controller):
         self.handle_joystick(1, value)
     def on_R3_right(self, value):
         self.handle_joystick(1, value)
+    def on_R2_press(self, value):
+        GPIO.output(RELAY_PIN, GPIO.HIGH)
+    def on_R2_release(self, *args):
+        GPIO.output(RELAY_PIN, GPIO.LOW)
+
 
     # Method to handle joystick events
     def handle_joystick(self, dxl_id, joystick_value):
@@ -85,7 +96,11 @@ class MyController(Controller):
         # Clear Syncwrite parameter storage
         groupSyncWrite.clearParam()
 
-# Start listening for controller events
-controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)
-controller.listen()
+try:
+    # Start listening for controller events
+    controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)
+    controller.listen()
+finally:
+    GPIO.cleanup()
+
 
