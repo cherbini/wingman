@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import time
+import cv2
+import depthai as dai
 from pyPS4Controller.controller import Controller
 from dynamixel_sdk import *
-import Jetson.GPIO as GPIO  # New Import
+import Jetson.GPIO as GPIO
+import threading
 
 # Definitions from your previous code...
 ADDR_PRESENT_POSITION = 132
@@ -22,85 +26,153 @@ TORQUE_DISABLE = 0
 DXL_MOVING_STATUS_THRESHOLD = 20
 RELAY_PIN = 7
 
-# Initialize the GPIO pin for the relay
-GPIO.setmode(GPIO.BOARD)
-GPIO.setup(RELAY_PIN, GPIO.OUT, initial=GPIO.LOW)
-
-# Dynamixel controller setup
-portHandler = PortHandler(DEVICENAME)
-
-if portHandler.openPort():
-    print("Port opened successfully!")
-else:
-    print("Failed to open the port!")
-
-packetHandler = PacketHandler(PROTOCOL_VERSION)
-groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
-
-# A conversion function for mapping joystick inputs to servo positions
-def joystick_to_servo_position(dxl_id, joystick_value):
-    # Get current position
-    dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, dxl_id, ADDR_PRESENT_POSITION)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-    # Calculate new position proportional to joystick movement
-    dxl_goal_position = dxl_present_position + int(joystick_value / 32767 * 500)  # Adjust 500 for sensitivity
-    return dxl_goal_position
-
-# Enable Torque for both servos and setup groupSyncRead
-for dxl_id in [DXL1_ID, DXL2_ID]:
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, dxl_id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
-    if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
-        print(f"Failed to enable torque on Dynamixel#{dxl_id}")
-
-class MyController(Controller):
-    def __init__(self, **kwargs):
-        Controller.__init__(self, **kwargs)
-
-    # Override the R3 stick methods (you may need to adjust depending on your controller layout)
-    def on_R3_up(self, value):
-        self.handle_joystick(2, value)
-    def on_R3_down(self, value):
-        self.handle_joystick(2, value)
-    def on_R3_left(self, value):
-        self.handle_joystick(1, value)
-    def on_R3_right(self, value):
-        self.handle_joystick(1, value)
-    def on_R2_press(self, value):
-        GPIO.output(RELAY_PIN, GPIO.HIGH)
-    def on_R2_release(self, *args):
-        GPIO.output(RELAY_PIN, GPIO.LOW)
-
-
-    # Method to handle joystick events
-    def handle_joystick(self, dxl_id, joystick_value):
-        dxl_goal_position = joystick_to_servo_position(dxl_id, joystick_value)
-
-        # Create goal position byte array
-        param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position)), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position)), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position)), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position))]
-
-        # Add goal position value to the Syncwrite storage
-        dxl_addparam_result = groupSyncWrite.addParam(dxl_id, param_goal_position)
-        if dxl_addparam_result != True:
-            print(f"[ID:{dxl_id}] groupSyncWrite addparam failed")
-            return
-
-        # Syncwrite goal position
-        dxl_comm_result = groupSyncWrite.txPacket()
-        if dxl_comm_result != COMM_SUCCESS:
-            print(packetHandler.getTxRxResult(dxl_comm_result))
-
-        # Clear Syncwrite parameter storage
-        groupSyncWrite.clearParam()
-
 try:
+    # Initialize the GPIO pin for the relay
+    GPIO.setmode(GPIO.BOARD)
+    GPIO.setup(RELAY_PIN, GPIO.OUT, initial=GPIO.LOW)
+
+    # Dynamixel controller setup
+    portHandler = PortHandler(DEVICENAME)
+
+    if portHandler.openPort():
+        print("Port opened successfully!")
+    else:
+        print("Failed to open the port!")
+
+    packetHandler = PacketHandler(PROTOCOL_VERSION)
+    groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
+
+    # A conversion function for mapping joystick inputs to servo positions
+    def joystick_to_servo_position(dxl_id, joystick_value):
+        # Define separate sensitivities for pan (DXL1_ID) and tilt (DXL2_ID)
+        sensitivity_pan = 300
+        sensitivity_tilt = 50  # Adjust this value for the desired tilt sensitivity
+    
+        # Get current position
+        dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, dxl_id, ADDR_PRESENT_POSITION)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+    
+        # Calculate new position proportional to joystick movement
+        sensitivity = sensitivity_pan if dxl_id == DXL1_ID else sensitivity_tilt
+        dxl_goal_position = dxl_present_position + int(joystick_value / 32767 * sensitivity)
+        return dxl_goal_position
+
+
+    # Enable Torque for both servos and setup groupSyncRead
+    for dxl_id in [DXL1_ID, DXL2_ID]:
+        dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, dxl_id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
+        if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
+            print(f"Failed to enable torque on Dynamixel#{dxl_id}")
+
+    class MyController(Controller):
+        def __init__(self, **kwargs):
+            Controller.__init__(self, **kwargs)
+            self.joystick_values = {DXL1_ID: 0, DXL2_ID: 0}  # Initialize joystick values
+            self.stop_event = threading.Event()
+            self.update_thread = threading.Thread(target=self.update_servos)
+            self.update_thread.start()
+
+        # Override the R3 stick methods (you may need to adjust depending on your controller layout)
+        def on_R3_up(self, value):
+            self.handle_joystick(2, value)
+        def on_R3_down(self, value):
+            self.handle_joystick(2, value)
+        def on_R3_left(self, value):
+            self.handle_joystick(1, value)
+        def on_R3_right(self, value):
+            self.handle_joystick(1, value)
+        def on_R2_press(self, value):
+            GPIO.output(RELAY_PIN, GPIO.HIGH)
+        def on_R2_release(self, *args):
+            GPIO.output(RELAY_PIN, GPIO.LOW)
+
+        # Method to handle joystick events
+        def handle_joystick(self, dxl_id, joystick_value):
+            # Save latest joystick value
+            self.joystick_values[dxl_id] = joystick_value
+
+        # Method to continuously update servos
+        def update_servos(self):
+            while not self.stop_event.is_set():
+                for dxl_id in [DXL1_ID, DXL2_ID]:
+                    dxl_goal_position = joystick_to_servo_position(dxl_id, self.joystick_values[dxl_id])
+
+                    # Create goal position byte array
+                    param_goal_position = [DXL_LOBYTE(DXL_LOWORD(dxl_goal_position)), DXL_HIBYTE(DXL_LOWORD(dxl_goal_position)), DXL_LOBYTE(DXL_HIWORD(dxl_goal_position)), DXL_HIBYTE(DXL_HIWORD(dxl_goal_position))]
+
+                    # Add goal position value to the Syncwrite storage
+                    dxl_addparam_result = groupSyncWrite.addParam(dxl_id, param_goal_position)
+                    if dxl_addparam_result != True:
+                        print(f"[ID:{dxl_id}] groupSyncWrite addparam failed")
+                        continue
+
+                    # Syncwrite goal position
+                    dxl_comm_result = groupSyncWrite.txPacket()
+                    if dxl_comm_result != COMM_SUCCESS:
+                        print(packetHandler.getTxRxResult(dxl_comm_result))
+
+                    # Clear Syncwrite parameter storage
+                    groupSyncWrite.clearParam()
+
+                time.sleep(0.01)  # Delay between updates
+
+    # Video capture function that runs on a separate thread
+    def video_capture():
+        pipeline = dai.Pipeline()
+
+        cam_rgb = pipeline.createColorCamera()
+        cam_rgb.setBoardSocket(dai.CameraBoardSocket.RGB)
+        cam_rgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+        cam_rgb.setPreviewSize(400, 400)
+        cam_rgb.setInterleaved(False)
+
+        xout_rgb = pipeline.createXLinkOut()
+        xout_rgb.setStreamName("rgb")
+        cam_rgb.video.link(xout_rgb.input)
+
+        with dai.Device(pipeline) as device:
+            q_rgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
+
+            while True:
+                try:
+                    in_rgb = q_rgb.get()
+                    frame = in_rgb.getCvFrame()
+
+                    #Flip the frame
+                    frame = cv2.flip(frame, -1)
+
+                    # Resize the frame
+                    frame = cv2.resize(frame, (640, 480))
+
+                    # Add a red dot in the center
+                    center_coordinates = (frame.shape[1] // 2, frame.shape[0] // 2)
+                    cv2.circle(frame, center_coordinates, 2, (0, 0, 255), -1)
+
+                    # Add a red circle around the dot
+                    cv2.circle(frame, center_coordinates, 9, (0, 0, 255), 1)
+
+
+                    cv2.imshow("OAK-1", frame)
+                    if cv2.waitKey(1) == ord('q'):
+                        break
+                except Exception as e:
+                    print("Error in video_capture thread:", str(e))
+                    break
+
+    # Start video capture on a separate thread
+    video_thread = threading.Thread(target=video_capture)
+    video_thread.start()
+
     # Start listening for controller events
     controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)
     controller.listen()
+except Exception as e:
+    print("Error:", str(e))
 finally:
+    controller.stop_event.set()  # Stop the servo update thread
     GPIO.cleanup()
-
+    portHandler.closePort()
 
