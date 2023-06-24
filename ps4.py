@@ -43,10 +43,12 @@ try:
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
 
     # A conversion function for mapping joystick inputs to servo positions
+    # A conversion function for mapping joystick inputs to servo positions
     def joystick_to_servo_position(dxl_id, joystick_value):
         # Define separate sensitivities for pan (DXL1_ID) and tilt (DXL2_ID)
-        sensitivity_pan = 300
-        sensitivity_tilt = 50  # Adjust this value for the desired tilt sensitivity
+        sensitivity_pan = 150
+        sensitivity_tilt = 30  # Adjust this value for the desired tilt sensitivity
+        dead_zone = 2000  # Define the range of joystick values to be considered as the "dead zone"
     
         # Get current position
         dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, dxl_id, ADDR_PRESENT_POSITION)
@@ -57,6 +59,11 @@ try:
     
         # Calculate new position proportional to joystick movement
         sensitivity = sensitivity_pan if dxl_id == DXL1_ID else sensitivity_tilt
+    
+        # If joystick is within the dead zone, do not change the servo position
+        if -dead_zone < joystick_value < dead_zone:
+            return dxl_present_position
+    
         dxl_goal_position = dxl_present_position + int(joystick_value / 32767 * sensitivity)
         return dxl_goal_position
 
@@ -148,7 +155,7 @@ try:
                     frame = cv2.resize(frame, (640, 480))
 
                     # Add a red dot in the center
-                    center_coordinates = (frame.shape[1] // 2, frame.shape[0] // 2)
+                    center_coordinates = (frame.shape[1] // 2 - 45, frame.shape[0] // 2 - 80)
                     cv2.circle(frame, center_coordinates, 2, (0, 0, 255), -1)
 
                     # Add a red circle around the dot
