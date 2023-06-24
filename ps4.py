@@ -23,8 +23,13 @@ DXL2_ID = 2
 DEVICENAME = '/dev/ttyDXL'
 TORQUE_ENABLE = 1
 TORQUE_DISABLE = 0
-DXL_MOVING_STATUS_THRESHOLD = 20
+DXL_MOVING_STATUS_THRESHOLD = 40
 RELAY_PIN = 7
+ADDR_GOAL_TORQUE = 102
+LEN_GOAL_TORQUE = 2
+
+# Be careful with this value. High torques may lead to overheating and damage to the servo.
+DXL_GOAL_TORQUE = 500  # This value depends on your servo model.
 
 try:
     # Initialize the GPIO pin for the relay
@@ -40,15 +45,22 @@ try:
         print("Failed to open the port!")
 
     packetHandler = PacketHandler(PROTOCOL_VERSION)
+
+    # Dynamixel Torque setup
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL2_ID, ADDR_GOAL_TORQUE, DXL_GOAL_TORQUE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
 
     # A conversion function for mapping joystick inputs to servo positions
-    # A conversion function for mapping joystick inputs to servo positions
     def joystick_to_servo_position(dxl_id, joystick_value):
         # Define separate sensitivities for pan (DXL1_ID) and tilt (DXL2_ID)
-        sensitivity_pan = 150
-        sensitivity_tilt = 30  # Adjust this value for the desired tilt sensitivity
-        dead_zone = 2000  # Define the range of joystick values to be considered as the "dead zone"
+        sensitivity_pan = 50
+        sensitivity_tilt = 20  # Adjust this value for the desired tilt sensitivity
+        dead_zone = 6000  # Define the range of joystick values to be considered as the "dead zone"
     
         # Get current position
         dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, dxl_id, ADDR_PRESENT_POSITION)
@@ -129,17 +141,21 @@ try:
     # Video capture function that runs on a separate thread
     def video_capture():
         pipeline = dai.Pipeline()
-
+    
         cam_rgb = pipeline.createColorCamera()
+        cam_rgb.initialControl.setManualFocus(128) #0 is infinity, 255 is macro
         cam_rgb.setBoardSocket(dai.CameraBoardSocket.RGB)
         cam_rgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-        cam_rgb.setPreviewSize(400, 400)
+        #cam_rgb.setPreviewSize(400, 400)
+        #cam_rgb.setIspScale(2,3) #1080P -> 720P
+        cam_rgb.setIspScale(3,4) #1080P -> 720P
+        #cam_rgb.setVideoSize(640,360)
         cam_rgb.setInterleaved(False)
-
+    
         xout_rgb = pipeline.createXLinkOut()
         xout_rgb.setStreamName("rgb")
         cam_rgb.video.link(xout_rgb.input)
-
+    
         with dai.Device(pipeline) as device:
             q_rgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
 
@@ -152,17 +168,20 @@ try:
                     frame = cv2.flip(frame, -1)
 
                     # Resize the frame
-                    frame = cv2.resize(frame, (640, 480))
+                    #frame = cv2.resize(frame, (640, 480))
 
                     # Add a red dot in the center
-                    center_coordinates = (frame.shape[1] // 2 - 45, frame.shape[0] // 2 - 80)
-                    cv2.circle(frame, center_coordinates, 2, (0, 0, 255), -1)
+                    center_coordinates = (frame.shape[1] // 2 - 144, frame.shape[0] // 2 - 280)
+                    cv2.circle(frame, center_coordinates, 5, (0, 0, 255), -1)
 
                     # Add a red circle around the dot
-                    cv2.circle(frame, center_coordinates, 9, (0, 0, 255), 1)
+                    cv2.circle(frame, center_coordinates, 25, (0, 0, 255), 1)
 
 
+                    cv2.namedWindow("OAK-1", cv2.WND_PROP_FULLSCREEN)
+                    cv2.setWindowProperty("OAK-1", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                     cv2.imshow("OAK-1", frame)
+
                     if cv2.waitKey(1) == ord('q'):
                         break
                 except Exception as e:
