@@ -6,8 +6,8 @@ class CoordinateSystem:
     # Define class constants
     CAMERA_FOCAL_LENGTH_MM = 4.74
     CAMERA_PIXEL_SIZE_MM = 0.0008
-    PAN_SERVO_MAX_ANGLE_DEG = 180 
-    TILT_SERVO_MAX_ANGLE_DEG = 180 
+    PAN_SERVO_MAX_ANGLE_DEG = 180
+    TILT_SERVO_MAX_ANGLE_DEG = 180
     IMAGE_WIDTH_PIXELS = 416
     IMAGE_HEIGHT_PIXELS = 416
     IMAGE_CENTER_X = IMAGE_WIDTH_PIXELS // 2
@@ -19,6 +19,10 @@ class CoordinateSystem:
         Convert pixel coordinates to servo angles using the camera's intrinsic parameters.
         Angles are relative to the image center.
         """
+        # Correct for image center
+        x_pixels -= CoordinateSystem.IMAGE_CENTER_X
+        y_pixels -= CoordinateSystem.IMAGE_CENTER_Y
+
         x_mm = x_pixels * CoordinateSystem.CAMERA_PIXEL_SIZE_MM
         y_mm = y_pixels * CoordinateSystem.CAMERA_PIXEL_SIZE_MM
 

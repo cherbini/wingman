@@ -1,15 +1,38 @@
 # File: main.py
 
 import time
+import threading
 import cv2
 import numpy as np
 import apriltag
 from dynamixel_controller import DynamixelController
 from motion_tracker import MotionTracker
 from coordinate_system import CoordinateSystem
+from pyPS4Controller.controller import Controller
+
 
 def nothing(x):
     pass
+
+class MyController(Controller):
+
+    def __init__(self, **kwargs):
+        Controller.__init__(self, **kwargs)
+        self.pan_goal = None
+        self.tilt_goal = None
+    def on_left_joystick_y(self, value):
+        # Handle tilt here
+        self.tilt_goal = self.map_range(value, -1.0, 1.0, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION)
+        print(f"Left joystick Y: {value}, Tilt goal: {self.tilt_goal}")
+            
+    def on_left_joystick_x(self, value):
+        # Handle pan here
+        self.pan_goal = self.map_range(value, -1.0, 1.0, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION)
+        print(f"Left joystick X: {value}, Pan goal: {self.pan_goal}")
+
+
+    def map_range(self, input_value, input_min, input_max, output_min, output_max):
+        return ((input_value - input_min) * (output_max - output_min) / (input_max - input_min)) + output_min
 
 class Application:
     def __init__(self):
@@ -37,6 +60,7 @@ class Application:
         cv2.createTrackbar("Show Frame", "Settings", 1, 1, nothing)
         cv2.createTrackbar("Reverse Pan", "Settings", 0, 1, nothing)
         cv2.createTrackbar("Reverse Tilt", "Settings", 0, 1, nothing)
+        cv2.createTrackbar("Joystick Control", "Settings", 0, 1, self.toggle_joystick_control)
         # Add trackbars (acting as buttons)
         cv2.createTrackbar("Save Settings", "Settings", 0, 1, self.save_settings)
         cv2.createTrackbar("Load Settings", "Settings", 0, 1, self.load_settings)
@@ -62,6 +86,11 @@ class Application:
 
         self.april_detector = apriltag.Detector()
         self.april_tag_visible = False
+        self.controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)
+
+
+    def toggle_joystick_control(self, value):
+        self.joystick_control = bool(value)
 
     def get_trackbar_position(self, name, window="Settings", default_value=0):
         try:
@@ -87,14 +116,17 @@ class Application:
                 cv2.setTrackbarPos(setting, "Settings", value)
             # Optionally reset the "Load Settings" trackbar to 0 here
 
-
     def run(self):
         pan_goal = None
         tilt_goal = None
         last_centroid = None
         last_prediction = None
         last_detection_time = None
+
         try:
+            thread = threading.Thread(target=self.controller.listen)
+            thread.start()
+
             self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
         except AttributeError as e:
             print(f"Failed to get home position: {e}")
@@ -104,11 +136,19 @@ class Application:
             print("Error: Home Position is not set")
             return
 
+
+            self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
+
         self.dynamixel_controller.servo_test()
         prev_x_pixels, prev_y_pixels = None, None
         prev_vx_pixels, prev_vy_pixels = None, None
         while True:
+            if self.controller.pan_goal is not None and self.controller.tilt_goal is not None:
+                pan_goal = self.controller.pan_goal
+                tilt_goal = self.controller.tilt_goal
+
             try:
+
                 for frame, detections in self.motion_tracker.run():
                     lead_time = self.get_trackbar_position("Lead Time", window="Settings", default_value=0) / 10.0
                     flip_horizontal = self.get_trackbar_position("Flip Horizontal Image", window="Settings", default_value=0)
@@ -298,6 +338,10 @@ class Application:
                                     self.dynamixel_controller.TILT_MIN_POSITION,
                                     self.dynamixel_controller.TILT_MAX_POSITION
                                 ) * servo_scale
+
+                                # Print pan_goal and tilt_goal for debugging
+                                print(f"Setting PAN goal position to: {pan_goal}")
+                                print(f"Setting TILT goal position to: {tilt_goal}")
     
                             # Set the servo speed
                             try:
@@ -318,6 +362,9 @@ class Application:
                                 tilt_goal = self.dynamixel_controller.clamp_servo_position(
                                     tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION
                                 )
+                                # Print pan_goal and tilt_goal after clamping
+                                print(f"Clamped PAN goal position to: {pan_goal}")
+                                print(f"Clamped TILT goal position to: {tilt_goal}")
     
                                 try:
                                     self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
