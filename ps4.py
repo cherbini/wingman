@@ -7,6 +7,7 @@ import depthai as dai
 from pyPS4Controller.controller import Controller
 from dynamixel_sdk import *
 import Jetson.GPIO as GPIO
+import numpy as np
 import threading
 
 # Definitions from your previous code...
@@ -31,6 +32,8 @@ LEN_GOAL_TORQUE = 2
 # Be careful with this value. High torques may lead to overheating and damage to the servo.
 DXL_GOAL_TORQUE = 500  # This value depends on your servo model.
 
+draw_red_dots = True
+
 try:
     # Initialize the GPIO pin for the relay
     GPIO.setmode(GPIO.BOARD)
@@ -54,6 +57,10 @@ try:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
+
+    def checkbox_handler(pos):
+        global draw_red_dots
+        draw_red_dots = bool(pos)
 
     # A conversion function for mapping joystick inputs to servo positions
     def joystick_to_servo_position(dxl_id, joystick_value):
@@ -155,6 +162,10 @@ try:
         xout_rgb = pipeline.createXLinkOut()
         xout_rgb.setStreamName("rgb")
         cam_rgb.video.link(xout_rgb.input)
+
+        cv2.namedWindow("Control Panel")
+        cv2.createTrackbar("Draw Red Dots", "Control Panel", int(draw_red_dots), 1, checkbox_handler)
+
     
         with dai.Device(pipeline) as device:
             q_rgb = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
@@ -172,10 +183,11 @@ try:
 
                     # Add a red dot in the center
                     center_coordinates = (frame.shape[1] // 2 - 144, frame.shape[0] // 2 - 280)
-                    cv2.circle(frame, center_coordinates, 5, (0, 0, 255), -1)
+                    if draw_red_dots:
+                        cv2.circle(frame, center_coordinates, 5, (0, 0, 255), -1)
 
-                    # Add a red circle around the dot
-                    cv2.circle(frame, center_coordinates, 25, (0, 0, 255), 1)
+                        # Add a red circle around the dot
+                        cv2.circle(frame, center_coordinates, 25, (0, 0, 255), 1)
 
 
                     cv2.namedWindow("OAK-1", cv2.WND_PROP_FULLSCREEN)
