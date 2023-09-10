@@ -65,8 +65,8 @@ try:
     # A conversion function for mapping joystick inputs to servo positions
     def joystick_to_servo_position(dxl_id, joystick_value):
         # Define separate sensitivities for pan (DXL1_ID) and tilt (DXL2_ID)
-        sensitivity_pan = 50
-        sensitivity_tilt = 20  # Adjust this value for the desired tilt sensitivity
+        sensitivity_pan =600 
+        sensitivity_tilt = 200  # Adjust this value for the desired tilt sensitivity
         dead_zone = 6000  # Define the range of joystick values to be considered as the "dead zone"
     
         # Get current position
@@ -115,10 +115,14 @@ try:
         def on_R2_release(self, *args):
             GPIO.output(RELAY_PIN, GPIO.LOW)
 
+
         # Method to handle joystick events
         def handle_joystick(self, dxl_id, joystick_value):
+            if dxl_id == DXL2_ID:
+                joystick_value = -joystick_value
             # Save latest joystick value
             self.joystick_values[dxl_id] = joystick_value
+
 
         # Method to continuously update servos
         def update_servos(self):
@@ -163,8 +167,8 @@ try:
         xout_rgb.setStreamName("rgb")
         cam_rgb.video.link(xout_rgb.input)
 
-        cv2.namedWindow("Control Panel")
-        cv2.createTrackbar("Draw Red Dots", "Control Panel", int(draw_red_dots), 1, checkbox_handler)
+        #cv2.namedWindow("Control Panel")
+        #cv2.createTrackbar("Draw Red Dots", "Control Panel", int(draw_red_dots), 1, checkbox_handler)
 
     
         with dai.Device(pipeline) as device:
@@ -201,8 +205,8 @@ try:
                     break
 
     # Start video capture on a separate thread
-    video_thread = threading.Thread(target=video_capture)
-    video_thread.start()
+    #video_thread = threading.Thread(target=video_capture)
+    #video_thread.start()
 
     # Start listening for controller events
     controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)

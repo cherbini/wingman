@@ -4,12 +4,12 @@ import time
 class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
-    PAN_MIN_POSITION = 0  # Adjust as needed
-    PAN_MAX_POSITION = 4096  # Adjust as needed
-    TILT_MIN_POSITION = 0 # Adjust as needed
-    TILT_MAX_POSITION = 4096  # Adjust as needed
-    PAN_CENTER_POSITION = 2048
-    TILT_CENTER_POSITION = 2048
+    PAN_MIN_POSITION = 700# Adjust as needed
+    PAN_MAX_POSITION = 5800# Adjust as needed
+    TILT_MIN_POSITION = 1300# Adjust as needed
+    TILT_MAX_POSITION = 2400 # Adjust as needed
+    PAN_CENTER_POSITION = 2448
+    TILT_CENTER_POSITION = 2000
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -92,10 +92,6 @@ class DynamixelController:
             elif servo_id == self.TILT_SERVO_ID:
                 goal_position = self.adjust_goal_position(servo_id, goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
                 print(f"Setting TILT goal position to: {goal_position}")
-    
-            if not (0 <= goal_position <= 4096):
-                print(f"Error: The goal position is out of range. {goal_position}. It should be between 0 and 4095.")
-            goal_position = int(min(max(goal_position, 0), 4096))
     
             present_position = self.get_present_position()
             if servo_id == self.PAN_SERVO_ID:
