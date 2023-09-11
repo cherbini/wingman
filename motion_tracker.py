@@ -31,7 +31,7 @@ class MotionTracker:
         self.camRgb.setIspScale(1,3)
         self.camRgb.setPreviewKeepAspectRatio(False)
         self.camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-        self.camRgb.setFps(40)
+        #self.camRgb.setFps(40)
 
         # Network specific settings
         self.detectionNetwork.setConfidenceThreshold(0.7)
@@ -63,7 +63,6 @@ class MotionTracker:
 
             frame = None
             detections = []
-            startTime = time.monotonic()
             counter = 0
             color2 = (255, 255, 255)
 

@@ -4,12 +4,12 @@ import time
 class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
-    PAN_MIN_POSITION = 0# Adjust as needed
-    PAN_MAX_POSITION = 8000# Adjust as needed
-    TILT_MIN_POSITION = 1200# Adjust as needed
-    TILT_MAX_POSITION = 2400 # Adjust as needed
-    PAN_CENTER_POSITION = 4000
-    TILT_CENTER_POSITION = 1800
+    PAN_MIN_POSITION = 700# Adjust as needed
+    PAN_MAX_POSITION = 5800# Adjust as needed
+    TILT_MIN_POSITION = 1000# Adjust as needed
+    TILT_MAX_POSITION = 2200 # Adjust as needed
+    PAN_CENTER_POSITION = 2048
+    TILT_CENTER_POSITION = 2200
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -88,43 +88,25 @@ class DynamixelController:
         try:
             if servo_id == self.PAN_SERVO_ID:
                 goal_position = self.adjust_goal_position(servo_id, goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
-                servo_name = "PAN"
+                print(f"Setting PAN goal position to: {goal_position}")
             elif servo_id == self.TILT_SERVO_ID:
                 goal_position = self.adjust_goal_position(servo_id, goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
-                servo_name = "TILT"
-            else:
-                print(f"Unsupported servo_id: {servo_id}")
-                return False
+                print(f"Setting TILT goal position to: {goal_position}")
     
-            # Get current servo positions
-            pan_present_position, tilt_present_position = self.get_present_position()
-    
-            # Depending on the servo in question, choose the appropriate present position
-            present_position = pan_present_position if servo_name == "PAN" else tilt_present_position
-    
-            # Set a threshold for the position difference
-            position_threshold = 1
-    
-            # If the difference between current and goal position is within threshold, skip sending the command
-            if abs(present_position - goal_position) <= position_threshold:
-                print(f"Skipping {servo_name} update as the goal is within the threshold of the current position.")
-                return True
-    
-            print(f"Setting {servo_name} goal position to: {goal_position}. Current position: {present_position}")
+            present_position = self.get_present_position()
+            if servo_id == self.PAN_SERVO_ID:
+                print(f"Current position of PAN servo: {present_position[0]}")
+            elif servo_id == self.TILT_SERVO_ID:
+                print(f"Current position of TILT servo: {present_position[1]}")
     
             dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, servo_id, self.ADDR_MX_GOAL_POSITION, goal_position)
             if dxl_comm_result != self.COMM_SUCCESS:
                 print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-                return False
             elif dxl_error != 0:
                 print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-                return False
-    
-            return True
     
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
-            return False
 
     def get_present_position(self):
         # Syncread present position

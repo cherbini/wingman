@@ -5,6 +5,7 @@ import threading
 import cv2
 import numpy as np
 import apriltag
+import Jetson.GPIO as GPIO
 from dynamixel_controller import DynamixelController
 from motion_tracker import MotionTracker
 from coordinate_system import CoordinateSystem
@@ -20,6 +21,7 @@ class Application:
         self.baudrate = 1000000 
         self.pan_servo_id = 1
         self.tilt_servo_id = 2
+        self.relay_pin = 7
         self.nnPath = "models/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob"  # Set the correct path to the YOLO model blob file
 
         # Initialize components
@@ -31,8 +33,8 @@ class Application:
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-        self.process_noise_cov = 4
-        self.measurement_noise_cov = 8
+        self.process_noise_cov = 2
+        self.measurement_noise_cov = 1
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -68,6 +70,11 @@ class Application:
         self.prev_y_pixels = None
         self.prev_vx_pixels = None
         self.prev_vy_pixels = None
+
+    def activate_relay(duration=1):
+            GPIO.output(RELAY_PIN, GPIO.HIGH)
+            time.sleep(duration)
+            GPIO.output(RELAY_PIN, GPIO.LOW)
 
     def set_servo_speed(self, servo_id, speed):
         try:
@@ -126,6 +133,8 @@ class Application:
             return velocity
         print("Returning None for velocity")
         return None, None
+
+
 
     def calculate_centroid(self, detection):
         return tuple(np.float32(val) for val in [(detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2])
@@ -242,7 +251,7 @@ class Application:
                                 last_centroid = centroid 
                     
                                 try: 
-                                    self.draw_centroid(frame, centroid)
+                                    #self.draw_centroid(frame, centroid)
                                     prediction = self.update_kalman_filter(centroid)
 
                                     if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
@@ -308,7 +317,7 @@ class Application:
                     if self.show_frame:
                         cv2.imshow("Frame", frame)
                     else:
-                        # cv2.destroyWindow("Frame")
+                        cv2.destroyWindow("Frame")
                         pass
                   
                     # Break if 'q' is pressed
