@@ -6,7 +6,7 @@ class CoordinateSystem:
     # Define class constants
     CAMERA_FOCAL_LENGTH_MM = 4.74
     CAMERA_PIXEL_SIZE_MM = 0.0008
-    PAN_SERVO_MAX_ANGLE_DEG = 360
+    PAN_SERVO_MAX_ANGLE_DEG = 107000
     TILT_SERVO_MAX_ANGLE_DEG = 180
     IMAGE_WIDTH_PIXELS = 416
     IMAGE_HEIGHT_PIXELS = 416
@@ -62,7 +62,7 @@ class CoordinateSystem:
         theta_x_deg, theta_y_deg = CoordinateSystem.pixels_to_angle(x_pixels, y_pixels)
 
         # Normalize to servo command range [0, 4095]
-        pan_command = int((theta_x_deg / CoordinateSystem.PAN_SERVO_MAX_ANGLE_DEG) * 4095)
+        pan_command = int((theta_x_deg / CoordinateSystem.PAN_SERVO_MAX_ANGLE_DEG) * 107000)
         tilt_command = int((theta_y_deg / CoordinateSystem.TILT_SERVO_MAX_ANGLE_DEG) * 4095)
 
         return pan_command, tilt_command

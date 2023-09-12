@@ -1,15 +1,18 @@
 import dynamixel_sdk as sdk
+from dynamixel_sdk import DXL_LOBYTE, DXL_LOWORD, DXL_HIBYTE, DXL_HIWORD
+from dynamixel_sdk import GroupSyncWrite
+
 import time
 
 class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
-    PAN_MIN_POSITION = 0# Adjust as needed
-    PAN_MAX_POSITION = 8000# Adjust as needed
-    TILT_MIN_POSITION = 1200# Adjust as needed
-    TILT_MAX_POSITION = 2400 # Adjust as needed
-    PAN_CENTER_POSITION = 4000
-    TILT_CENTER_POSITION = 1800
+    PAN_MIN_POSITION = -16000# Adjust as needed
+    PAN_MAX_POSITION = 16000# Adjust as needed
+    TILT_MIN_POSITION = 1100# Adjust as needed
+    TILT_MAX_POSITION = 2200 # Adjust as needed
+    PAN_CENTER_POSITION = 0
+    TILT_CENTER_POSITION = 1100
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -25,9 +28,11 @@ class DynamixelController:
         self.ADDR_MX_TORQUE_ENABLE = 64
         self.ADDR_MX_GOAL_POSITION = 116
         self.ADDR_MX_GOAL_SPEED = 112
+        self.ADDR_OPERATING_MODE = 11 
         self.LEN_GOAL_POSITION = 4  # Data Byte Length
         self.ADDR_MX_PRESENT_POSITION = 132
         self.LEN_PRESENT_POSITION = 4  # Data Byte Length
+        self.EXT_POSITION_CONTROL_MODE   = 4
 
         # Communication result
         self.COMM_SUCCESS = sdk.COMM_SUCCESS
@@ -50,6 +55,7 @@ class DynamixelController:
         # Enable Dynamixel torque
         self.set_torque(self.PAN_SERVO_ID, True)
         self.set_torque(self.TILT_SERVO_ID, True)
+        self.set_PAN_control_mode(self.PAN_SERVO_ID)
 
         # Initialize GroupSyncWrite instance
         self.groupSyncWrite = sdk.GroupSyncWrite(self.portHandler, self.packetHandler, self.ADDR_MX_GOAL_POSITION, self.LEN_GOAL_POSITION)
@@ -58,6 +64,15 @@ class DynamixelController:
         self.groupSyncRead = sdk.GroupSyncRead(self.portHandler, self.packetHandler, self.ADDR_MX_PRESENT_POSITION, self.LEN_PRESENT_POSITION)
         self.groupSyncRead.addParam(self.PAN_SERVO_ID)
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
+    def set_PAN_control_mode(self, servo_id):
+        # Set operating mode to extended position control mode
+        dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(self.portHandler, servo_id, self.ADDR_OPERATING_MODE, self.EXT_POSITION_CONTROL_MODE)
+        if dxl_comm_result != self.COMM_SUCCESS:
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % self.packetHandler.getRxPacketError(dxl_error))
+        else:
+            print("Operating mode changed to extended position control mode.")
 
     def set_torque(self, servo_id, enable):
         dxl_comm_result, dxl_error = self.packetHandler.write1ByteTxRx(
@@ -84,47 +99,41 @@ class DynamixelController:
             goal_position = self.clamp_servo_position(goal_position, min_position, max_position)
         return goal_position
 
-    def set_goal_position(self, servo_id, goal_position):
-        try:
-            if servo_id == self.PAN_SERVO_ID:
-                goal_position = self.adjust_goal_position(servo_id, goal_position, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
-                servo_name = "PAN"
-            elif servo_id == self.TILT_SERVO_ID:
-                goal_position = self.adjust_goal_position(servo_id, goal_position, self.TILT_MIN_POSITION, self.TILT_MAX_POSITION)
-                servo_name = "TILT"
-            else:
-                print(f"Unsupported servo_id: {servo_id}")
-                return False
+    def set_goal_position(self, pan_goal, tilt_goal):
+        # Convert pan and tilt goals to byte arrays 
+        pan_param_goal_position = [
+            DXL_LOBYTE(DXL_LOWORD(pan_goal)),
+            DXL_HIBYTE(DXL_LOWORD(pan_goal)),
+            DXL_LOBYTE(DXL_HIWORD(pan_goal)),
+            DXL_HIBYTE(DXL_HIWORD(pan_goal))
+        ]
     
-            # Get current servo positions
-            pan_present_position, tilt_present_position = self.get_present_position()
+        tilt_param_goal_position = [
+            DXL_LOBYTE(DXL_LOWORD(tilt_goal)),
+            DXL_HIBYTE(DXL_LOWORD(tilt_goal)),
+            DXL_LOBYTE(DXL_HIWORD(tilt_goal)),
+            DXL_HIBYTE(DXL_HIWORD(tilt_goal))
+        ]
     
-            # Depending on the servo in question, choose the appropriate present position
-            present_position = pan_present_position if servo_name == "PAN" else tilt_present_position
+        # Add goal position values to the Syncwrite storage
+        pan_addparam_result = self.groupSyncWrite.addParam(self.PAN_SERVO_ID, pan_param_goal_position)
+        if not pan_addparam_result:
+            print(f"[ID:{self.PAN_SERVO_ID}] groupSyncWrite addparam failed")
     
-            # Set a threshold for the position difference
-            position_threshold = 1
+        tilt_addparam_result = self.groupSyncWrite.addParam(self.TILT_SERVO_ID, tilt_param_goal_position)
+        if not tilt_addparam_result:
+            print(f"[ID:{self.TILT_SERVO_ID}] groupSyncWrite addparam failed")
     
-            # If the difference between current and goal position is within threshold, skip sending the command
-            if abs(present_position - goal_position) <= position_threshold:
-                print(f"Skipping {servo_name} update as the goal is within the threshold of the current position.")
-                return True
-    
-            print(f"Setting {servo_name} goal position to: {goal_position}. Current position: {present_position}")
-    
-            dxl_comm_result, dxl_error = self.packetHandler.write4ByteTxRx(self.portHandler, servo_id, self.ADDR_MX_GOAL_POSITION, goal_position)
-            if dxl_comm_result != self.COMM_SUCCESS:
-                print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
-                return False
-            elif dxl_error != 0:
-                print("%s" % self.packetHandler.getRxPacketError(dxl_error))
-                return False
-    
-            return True
-    
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        # Syncwrite goal position
+        dxl_comm_result = self.groupSyncWrite.txPacket()
+        if dxl_comm_result != self.COMM_SUCCESS:
+            print("%s" % self.packetHandler.getTxRxResult(dxl_comm_result))
             return False
+    
+        # Clear Syncwrite parameter storage
+        self.groupSyncWrite.clearParam()
+    
+        return True
 
     def get_present_position(self):
         # Syncread present position

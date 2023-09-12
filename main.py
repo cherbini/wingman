@@ -34,7 +34,7 @@ class Application:
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
         self.process_noise_cov = 2
-        self.measurement_noise_cov = 1
+        self.measurement_noise_cov = 0
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -64,14 +64,14 @@ class Application:
         self.servo_scale = 1
         self.show_frame = 1
         self.servo_speed = 500
-        self.reverse_pan = 0
-        self.reverse_tilt = 0
+        self.reverse_pan = 1
+        self.reverse_tilt = 1
         self.prev_x_pixels = None
         self.prev_y_pixels = None
         self.prev_vx_pixels = None
         self.prev_vy_pixels = None
 
-    def activate_relay(duration=1):
+    def activate_relay(duration=2):
             GPIO.output(RELAY_PIN, GPIO.HIGH)
             time.sleep(duration)
             GPIO.output(RELAY_PIN, GPIO.LOW)
@@ -251,7 +251,7 @@ class Application:
                                 last_centroid = centroid 
                     
                                 try: 
-                                    #self.draw_centroid(frame, centroid)
+                                    self.draw_centroid(frame, centroid)
                                     prediction = self.update_kalman_filter(centroid)
 
                                     if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
@@ -288,16 +288,13 @@ class Application:
                                 except Exception as e:
                                     print(f"Error processing detections: {e}")
 
-                            # Move these outside the if condition if they're universally applicable.
-                            self.set_servo_speed(self.dynamixel_controller.PAN_SERVO_ID, self.servo_speed)
-                            self.set_servo_speed(self.dynamixel_controller.TILT_SERVO_ID, self.servo_speed)
                             if pan_goal and tilt_goal:
                                 pan_goal = self.clamp_servo_position(pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION)
                                 tilt_goal = self.clamp_servo_position(tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION)
                                 
                                 try:
-                                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.PAN_SERVO_ID, pan_goal)
-                                    self.dynamixel_controller.set_goal_position(self.dynamixel_controller.TILT_SERVO_ID, tilt_goal)
+                                    self.dynamixel_controller.set_goal_position(pan_goal, tilt_goal)
+
                                 except RxPacketError:
                                     print("Error: The data value exceeds the limit value.")
 
