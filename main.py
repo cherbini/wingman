@@ -3,6 +3,7 @@
 import time
 import threading
 import cv2
+import users
 import numpy as np
 import apriltag
 import Jetson.GPIO as GPIO
@@ -137,14 +138,28 @@ class Application:
     def calculate_centroid(self, detection):
         return tuple(np.float32(val) for val in [(detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2])
 
-    def is_authorized(self, frame):
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        frame_height, frame_width, _ = frame.shape
-        text_size = cv2.getTextSize("AUTHORIZED", font, 2, 2)[0]
-        text_x = (frame_width - text_size[0]) // 2
-        text_y = ((frame_height - text_size[1]) // 2) + text_size[1]
-        cv2.putText(frame, "AUTHORIZED", (text_x, text_y), font, 2, (0, 255, 0), 2, cv2.LINE_AA)
+    def is_authorized(self, frame, badge_id):
+        # Check if badge ID exists in the database
+        if badge_id in users.database:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            frame_height, frame_width, _ = frame.shape
+    
+            # Draw the name
+            name = users.database[badge_id]["last_name"] + ", " + users.database[badge_id]["first_name"]
+            name_font_scale = 1.5  # Adjust this value to change the size of the name text
+            name_text_size = cv2.getTextSize(name, font, name_font_scale, 2)[0]
+            name_text_x = (frame_width - name_text_size[0]) // 2
+            name_text_y = ((frame_height - name_text_size[1]) // 2)
+            cv2.putText(frame, name, (name_text_x, name_text_y), font, name_font_scale, (0, 255, 0), 2, cv2.LINE_AA)
+    
+            # Draw "AUTHORIZED" below the name
+            auth_text_size = cv2.getTextSize("AUTHORIZED", font, 2, 2)[0]
+            auth_text_x = (frame_width - auth_text_size[0]) // 2
+            auth_text_y = ((frame_height - auth_text_size[1]) // 2) + auth_text_size[1] + 40  # added 40 for spacing
+            cv2.putText(frame, "AUTHORIZED", (auth_text_x, auth_text_y), font, 2, (0, 255, 0), 2, cv2.LINE_AA)
+    
         return frame
+
 
     def run(self):
         pan_goal = None
@@ -182,7 +197,6 @@ class Application:
                     if tags:
                         # There are AprilTags detected, so give them priority
                         self.april_tag_visible = True
-                        self.is_authorized(frame)
                     
                         # Track the first detected AprilTag
                         tag = tags[0]
@@ -202,6 +216,8 @@ class Application:
                         # Calculate centroid
                         centroid = np.mean(corners, axis=0)
                         centroid = centroid.astype(np.float32)  # Convert centroid matrix to float32
+
+                        self.is_authorized(frame, tag.tag_id)
                         print(f"Badge Detected: {tag.tag_id}")
                         print(f"Type of centroid matrix: {centroid.dtype}")
                         print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}")
