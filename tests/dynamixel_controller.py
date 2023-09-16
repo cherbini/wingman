@@ -4,12 +4,12 @@ import time
 class DynamixelController:
 
     # Define valid ranges for PAN and TILT servos
-    PAN_MIN_POSITION = 700# Adjust as needed
-    PAN_MAX_POSITION = 5800# Adjust as needed
-    TILT_MIN_POSITION = 1000# Adjust as needed
-    TILT_MAX_POSITION = 2200 # Adjust as needed
-    PAN_CENTER_POSITION = 2048
-    TILT_CENTER_POSITION = 2200
+    PAN_MIN_POSITION = -4000# Adjust as needed
+    PAN_MAX_POSITION = 4000# Adjust as needed
+    TILT_MIN_POSITION = 500# Adjust as needed
+    TILT_MAX_POSITION = 2000 # Adjust as needed
+    PAN_CENTER_POSITION = 0
+    TILT_CENTER_POSITION = 1000
 
     def __init__(self, device_port, baudrate, pan_servo_id, tilt_servo_id):
         # Protocol version
@@ -122,7 +122,6 @@ class DynamixelController:
     
         return pan_present_position, tilt_present_position
 
-
     def close(self):
         # Disable Dynamixel torque
         self.set_torque(self.PAN_SERVO_ID, False)
@@ -130,20 +129,6 @@ class DynamixelController:
 
         # Close port
         self.portHandler.closePort()
-
-
-    def servo_test(self):
-        # Define the square path for the servos
-        pan_offset = 1000
-        tilt_offset = 200
-        pan_positions = [self.PAN_CENTER_POSITION, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION + pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION - pan_offset, self.PAN_CENTER_POSITION]
-        tilt_positions = [self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION + tilt_offset, self.TILT_CENTER_POSITION - tilt_offset, self.TILT_CENTER_POSITION]
-
-        # Move the servos in the square path
-        for pan_pos, tilt_pos in zip(pan_positions, tilt_positions):
-            self.set_goal_position(self.PAN_SERVO_ID, pan_pos)
-            self.set_goal_position(self.TILT_SERVO_ID, tilt_pos)
-            time.sleep(1)  # Wait for 1 second for each move
 
 # Usage example
 if __name__ == "__main__":

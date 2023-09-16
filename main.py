@@ -134,10 +134,17 @@ class Application:
         print("Returning None for velocity")
         return None, None
 
-
-
     def calculate_centroid(self, detection):
         return tuple(np.float32(val) for val in [(detection.xmax + detection.xmin) / 2, (detection.ymax + detection.ymin) / 2])
+
+    def is_authorized(self, frame):
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        frame_height, frame_width, _ = frame.shape
+        text_size = cv2.getTextSize("AUTHORIZED", font, 2, 2)[0]
+        text_x = (frame_width - text_size[0]) // 2
+        text_y = ((frame_height - text_size[1]) // 2) + text_size[1]
+        cv2.putText(frame, "AUTHORIZED", (text_x, text_y), font, 2, (0, 255, 0), 2, cv2.LINE_AA)
+        return frame
 
     def run(self):
         pan_goal = None
@@ -150,7 +157,7 @@ class Application:
             print("Error: Home Position is not set")
             return
 
-        self.dynamixel_controller.servo_test()
+        self.dynamixel_controller.home_servos()
 
         while True:
 
@@ -175,6 +182,7 @@ class Application:
                     if tags:
                         # There are AprilTags detected, so give them priority
                         self.april_tag_visible = True
+                        self.is_authorized(frame)
                     
                         # Track the first detected AprilTag
                         tag = tags[0]
@@ -194,6 +202,7 @@ class Application:
                         # Calculate centroid
                         centroid = np.mean(corners, axis=0)
                         centroid = centroid.astype(np.float32)  # Convert centroid matrix to float32
+                        print(f"Badge Detected: {tag.tag_id}")
                         print(f"Type of centroid matrix: {centroid.dtype}")
                         print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}")
                         print(f"Dimensions of measurementMatrix: {self.kalman.measurementMatrix.shape}")
@@ -309,7 +318,11 @@ class Application:
                             # Display red and green dots if the detection has been still for three seconds
                             if elapsed_time_still <= 3 and elapsed_time_since_detection <= 3:
                                 self.draw_red_circle(frame, centroid)  # Assuming you have this method
-                    
+
+                            # Go Home after 5 seconds no detections
+                            if elapsed_time_since_detection <= 7:
+                                self.dynamixel_controller.home_servos()
+
                     # Display the frame
                     if self.show_frame:
                         cv2.imshow("Frame", frame)
