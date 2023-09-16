@@ -205,8 +205,8 @@ try:
                     break
 
     # Start video capture on a separate thread
-    #video_thread = threading.Thread(target=video_capture)
-    #video_thread.start()
+    video_thread = threading.Thread(target=video_capture)
+    video_thread.start()
 
     # Start listening for controller events
     controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)

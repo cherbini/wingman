@@ -34,7 +34,7 @@ class MotionTracker:
         #self.camRgb.setFps(40)
 
         # Network specific settings
-        self.detectionNetwork.setConfidenceThreshold(0.7)
+        self.detectionNetwork.setConfidenceThreshold(0.8)
         self.detectionNetwork.setNumClasses(80)
         self.detectionNetwork.setCoordinateSize(4)
         self.detectionNetwork.setAnchors([10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319])

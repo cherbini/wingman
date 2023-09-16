@@ -35,7 +35,7 @@ class Application:
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
         self.process_noise_cov = 2
-        self.measurement_noise_cov = 0
+        self.measurement_noise_cov = 2
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -61,12 +61,12 @@ class Application:
         self.april_tag_visible = False
         self.flip_horizontal = 1
         self.flip_vertical = 1
-        self.confidence_threshold = .8
+        self.tag_confidence_threshold = .7
         self.servo_scale = 1
         self.show_frame = 1
         self.servo_speed = 500
-        self.reverse_pan = 1
-        self.reverse_tilt = 1
+        self.reverse_pan = 0
+        self.reverse_tilt = 0
         self.prev_x_pixels = None
         self.prev_y_pixels = None
         self.prev_vx_pixels = None
@@ -160,7 +160,6 @@ class Application:
     
         return frame
 
-
     def run(self):
         pan_goal = None
         tilt_goal = None
@@ -182,7 +181,7 @@ class Application:
                     tags = self.april_detector.detect(gray)
 
                     # Filter detections based on confidence
-                    detections = [d for d in detections if d.confidence >= self.confidence_threshold]
+                    detections = [d for d in detections if d.confidence >= self.tag_confidence_threshold]
         
                     if self.flip_horizontal:
                         frame = cv2.flip(frame, 1)
@@ -318,7 +317,7 @@ class Application:
                                 tilt_goal = self.clamp_servo_position(tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION)
                                 
                                 try:
-                                    self.dynamixel_controller.set_goal_position(pan_goal, tilt_goal)
+                                    self.dynamixel_controller.set_goal_position_with_pid(pan_goal, tilt_goal)
 
                                 except RxPacketError:
                                     print("Error: The data value exceeds the limit value.")
