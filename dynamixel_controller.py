@@ -1,6 +1,5 @@
 import dynamixel_sdk as sdk
 from dynamixel_sdk import DXL_LOBYTE, DXL_LOWORD, DXL_HIBYTE, DXL_HIWORD
-from dynamixel_sdk import GroupSyncWrite
 from pid_controller import PIDController
 
 import time
@@ -67,8 +66,8 @@ class DynamixelController:
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
 
         # Initialize PID Controller
-        self.pan_pid = PIDController(kp=1, ki=0.0, kd=0.0)
-        self.tilt_pid = PIDController(kp=1, ki=0.0, kd=0.0)
+        self.pan_pid = PIDController(kp=1.6, ki=0.0, kd=0.4)
+        self.tilt_pid = PIDController(kp=1.6, ki=0.0, kd=0.4)
 
     def home_servos(self):
         """

@@ -24,6 +24,7 @@ class Application:
         self.baudrate = 1000000 
         self.pan_servo_id = 1
         self.tilt_servo_id = 2
+        self.tilt_offset = 10
         self.relay_pin = 7
         self.nnPath = "models/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob"  # Set the correct path to the YOLO model blob file
 
@@ -36,8 +37,8 @@ class Application:
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-        self.process_noise_cov = 2
-        self.measurement_noise_cov = 2
+        self.process_noise_cov = 6
+        self.measurement_noise_cov = 4
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -319,7 +320,7 @@ class Application:
                                 tilt_goal = self.clamp_servo_position(tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION)
                                 
                                 try:
-                                    self.dynamixel_controller.set_goal_position_with_pid(pan_goal, tilt_goal)
+                                    self.dynamixel_controller.set_goal_position_with_pid(pan_goal, tilt_goal + self.tilt_offset)
 
                                 except Exception as e:
                                     print(f"Error: The data value exceeds the limit value. {e}")
@@ -337,7 +338,7 @@ class Application:
                                 self.draw_red_circle(frame, centroid)  # Assuming you have this method
 
                             # Go Home after 5 seconds no detections
-                            if elapsed_time_since_detection <= 7:
+                            if elapsed_time_since_detection > 7:
                                 self.dynamixel_controller.home_servos()
 
                     # Display the frame
