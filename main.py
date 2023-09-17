@@ -15,6 +15,8 @@ from coordinate_system import CoordinateSystem
 def nothing(x):
     pass
 
+
+
 class Application:
     def __init__(self):
         # Create settings window
@@ -72,10 +74,10 @@ class Application:
         self.prev_vx_pixels = None
         self.prev_vy_pixels = None
 
-    def activate_relay(duration=2):
-            GPIO.output(RELAY_PIN, GPIO.HIGH)
+    def activate_relay(self, duration=2):
+            GPIO.output(self.relay_pin, GPIO.HIGH)
             time.sleep(duration)
-            GPIO.output(RELAY_PIN, GPIO.LOW)
+            GPIO.output(self.relay_pin, GPIO.LOW)
 
     def set_servo_speed(self, servo_id, speed):
         try:
@@ -319,8 +321,8 @@ class Application:
                                 try:
                                     self.dynamixel_controller.set_goal_position_with_pid(pan_goal, tilt_goal)
 
-                                except RxPacketError:
-                                    print("Error: The data value exceeds the limit value.")
+                                except Exception as e:
+                                    print(f"Error: The data value exceeds the limit value. {e}")
 
                             # Check elapsed time since last detection
                             elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
