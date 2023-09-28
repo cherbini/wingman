@@ -1,0 +1,21 @@
+{
+    "ps4": {
+        "x": 100,
+        "y": 200,
+        "bg": "blue",
+        "fg": "white"
+    },
+    "track": {
+        "x": 500,
+        "y": 200,
+        "bg": "green",
+        "fg": "black"
+    },
+    "stop": {
+        "x": 300,
+        "y": 300,
+        "bg": "red",
+        "fg": "white"
+    }
+}
+
