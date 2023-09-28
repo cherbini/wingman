@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="891d5cab-1301-4f62-b703-7b2dc3a435db" name="Changes" comment="" />
+    <list default="true" id="fea69d89-8fd2-42e7-a4bb-5046cf75cb5a" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -17,29 +19,31 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 0
+  &quot;associatedIndex&quot;: 1
 }</component>
-  <component name="ProjectId" id="2VusAbq1OIjHoDB5cBuUhTvaCyW" />
+  <component name="ProjectId" id="2W0eHh250znsxwL1Td4JxImCypQ" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
-    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;
   }
 }</component>
+  <component name="Push.Settings">
+    <option name="SHOW_DETAILS_PANEL" value="false" />
+  </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="891d5cab-1301-4f62-b703-7b2dc3a435db" name="Changes" comment="" />
-      <created>1695697166168</created>
+      <changelist id="fea69d89-8fd2-42e7-a4bb-5046cf75cb5a" name="Changes" comment="" />
+      <created>1695873843173</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1695697166168</updated>
+      <updated>1695873843173</updated>
     </task>
     <servers />
   </component>
@@ -53,5 +57,8 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="First Kiosk checkin. Decent Kalman and PIDs" />
   </component>
 </project>
