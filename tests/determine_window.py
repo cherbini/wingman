@@ -4,7 +4,7 @@ from dynamixel_controller import DynamixelController
 
 def manual_position_check():
     # Parameters: device port, baud rate, pan servo ID, tilt servo ID
-    dynamixel_controller = DynamixelController("/dev/ttyDXL", 1000000, 1, 2)
+    dynamixel_controller = DynamixelController("/dev/ttyUSB0", 1000000, 1, 2)
     
     # Disable torque so servos can be moved manually
     dynamixel_controller.set_torque(dynamixel_controller.PAN_SERVO_ID, False)

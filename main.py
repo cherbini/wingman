@@ -20,7 +20,7 @@ def nothing(x):
 class Application:
     def __init__(self):
         # Create settings window
-        self.device_port = "/dev/ttyDXL"
+        self.device_port = "/dev/ttyUSB0"
         self.baudrate = 1000000 
         self.pan_servo_id = 1
         self.tilt_servo_id = 2
@@ -53,7 +53,7 @@ class Application:
 
         # Set home and detection timer
         self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
-        print(f"Home Position: {self.home_position}")
+        print(f"Home Position: {self.home_position}", flush=True)
         self.last_positions = []
         self.start_time = None
         self.last_centroid = None
@@ -84,7 +84,7 @@ class Application:
         try:
             self.dynamixel_controller.set_speed(servo_id, speed)
         except Exception as e:
-            print(f"Failed to set servo speed for servo ID {servo_id}: {e}")
+            print(f"Failed to set servo speed for servo ID {servo_id}: {e}", flush=True)
 
     def clamp_servo_position(self, goal, min_position, max_position):
         return self.dynamixel_controller.clamp_servo_position(goal, min_position, max_position)
@@ -133,9 +133,9 @@ class Application:
     def calculate_velocity(self, centroid):
         if self.prev_x_pixels is not None and self.prev_y_pixels is not None:
             velocity = self.coordinate_system.calculate_velocity(centroid[0], centroid[1], self.prev_x_pixels, self.prev_y_pixels, dt=2)
-            print(f"Calculated Velocity: {velocity}")
+            print(f"Calculated Velocity: {velocity}", flush=True)
             return velocity
-        print("Returning None for velocity")
+        print("Returning None for velocity", flush=True)
         return None, None
 
     def calculate_centroid(self, detection):
@@ -171,7 +171,7 @@ class Application:
         last_detection_time = None
 
         if self.home_position is None:
-            print("Error: Home Position is not set")
+            print("Error: Home Position is not set", flush=True)
             return
 
         self.dynamixel_controller.home_servos()
@@ -220,11 +220,11 @@ class Application:
                         centroid = centroid.astype(np.float32)  # Convert centroid matrix to float32
 
                         self.is_authorized(frame, tag.tag_id)
-                        print(f"Badge Detected: {tag.tag_id}")
-                        print(f"Type of centroid matrix: {centroid.dtype}")
-                        print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}")
-                        print(f"Dimensions of measurementMatrix: {self.kalman.measurementMatrix.shape}")
-                        print(f"Dimensions of centroid: {centroid.shape}")
+                        print(f"Badge Detected: {tag.tag_id}", flush=True)
+                        print(f"Type of centroid matrix: {centroid.dtype}", flush=True)
+                        print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}", flush=True)
+                        print(f"Dimensions of measurementMatrix: {self.kalman.measurementMatrix.shape}", flush=True)
+                        print(f"Dimensions of centroid: {centroid.shape}", flush=True)
                     
                         # Convert centroid to pixel coordinates
                         centroid_px = (int(centroid[0]), int(centroid[1]))
@@ -313,7 +313,7 @@ class Application:
                                     self.process_centroid(frame, centroid)
 
                                 except Exception as e:
-                                    print(f"Error processing detections: {e}")
+                                    print(f"Error processing detections: {e}", flush=True)
 
                             if pan_goal and tilt_goal:
                                 pan_goal = self.clamp_servo_position(pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION)
@@ -323,7 +323,7 @@ class Application:
                                     self.dynamixel_controller.set_goal_position_with_pid(pan_goal, tilt_goal + self.tilt_offset)
 
                                 except Exception as e:
-                                    print(f"Error: The data value exceeds the limit value. {e}")
+                                    print(f"Error: The data value exceeds the limit value. {e}", flush=True)
 
                             # Check elapsed time since last detection
                             elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
@@ -353,16 +353,16 @@ class Application:
                         break
 
             except cv2.error as e:
-                print(f"A cv2.error occurred: {e}")
+                print(f"A cv2.error occurred: {e}", flush=True)
                 # Decide what to do in case of a cv2 error. For example, you might want to break the loop:
                 break
     
             except KeyboardInterrupt:
-                print("Interrupted by user")
+                print("Interrupted by user", flush=True)
                 break
     
             except Exception as e:
-                print(f"An unexpected error occurred: {e}")
+                print(f"An unexpected error occurred: {e}", flush=True)
                 # Decide what to do in case of a general error. You might want to continue, or you might want to break the loop:
                 continue
     

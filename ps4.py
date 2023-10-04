@@ -21,7 +21,7 @@ BAUDRATE = 1000000
 PROTOCOL_VERSION = 2.0
 DXL1_ID = 1
 DXL2_ID = 2
-DEVICENAME = '/dev/ttyDXL'
+DEVICENAME = '/dev/ttyUSB0'
 TORQUE_ENABLE = 1
 TORQUE_DISABLE = 0
 DXL_MOVING_STATUS_THRESHOLD = 40
@@ -43,18 +43,18 @@ try:
     portHandler = PortHandler(DEVICENAME)
 
     if portHandler.openPort():
-        print("Port opened successfully!")
+        print("Port opened successfully!", flush=True)
     else:
-        print("Failed to open the port!")
+        print("Failed to open the port!", flush=True)
 
     packetHandler = PacketHandler(PROTOCOL_VERSION)
 
     # Dynamixel Torque setup
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL2_ID, ADDR_GOAL_TORQUE, DXL_GOAL_TORQUE)
     if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result), flush=True)
     elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
+        print("%s" % packetHandler.getRxPacketError(dxl_error), flush=True)
 
     groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
 
@@ -72,9 +72,9 @@ try:
         # Get current position
         dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, dxl_id, ADDR_PRESENT_POSITION)
         if dxl_comm_result != COMM_SUCCESS:
-            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result), flush=True)
         elif dxl_error != 0:
-            print("%s" % packetHandler.getRxPacketError(dxl_error))
+            print("%s" % packetHandler.getRxPacketError(dxl_error), flush=True)
     
         # Calculate new position proportional to joystick movement
         sensitivity = sensitivity_pan if dxl_id == DXL1_ID else sensitivity_tilt
@@ -91,7 +91,7 @@ try:
     for dxl_id in [DXL1_ID, DXL2_ID]:
         dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, dxl_id, ADDR_TORQUE_ENABLE, TORQUE_ENABLE)
         if dxl_comm_result != COMM_SUCCESS or dxl_error != 0:
-            print(f"Failed to enable torque on Dynamixel#{dxl_id}")
+            print(f"Failed to enable torque on Dynamixel#{dxl_id}", flush=True)
 
     class MyController(Controller):
         def __init__(self, **kwargs):
@@ -136,13 +136,13 @@ try:
                     # Add goal position value to the Syncwrite storage
                     dxl_addparam_result = groupSyncWrite.addParam(dxl_id, param_goal_position)
                     if dxl_addparam_result != True:
-                        print(f"[ID:{dxl_id}] groupSyncWrite addparam failed")
+                        print(f"[ID:{dxl_id}] groupSyncWrite addparam failed", flush=True)
                         continue
 
                     # Syncwrite goal position
                     dxl_comm_result = groupSyncWrite.txPacket()
                     if dxl_comm_result != COMM_SUCCESS:
-                        print(packetHandler.getTxRxResult(dxl_comm_result))
+                        print(packetHandler.getTxRxResult(dxl_comm_result), flush=True)
 
                     # Clear Syncwrite parameter storage
                     groupSyncWrite.clearParam()
@@ -201,7 +201,7 @@ try:
                     if cv2.waitKey(1) == ord('q'):
                         break
                 except Exception as e:
-                    print("Error in video_capture thread:", str(e))
+                    print("Error in video_capture thread:", str(e), flush=True)
                     break
 
     # Start video capture on a separate thread
@@ -212,7 +212,7 @@ try:
     controller = MyController(interface="/dev/input/js0", connecting_using_ds4drv=False)
     controller.listen()
 except Exception as e:
-    print("Error:", str(e))
+    print("Error:", str(e), flush=True)
 finally:
     controller.stop_event.set()  # Stop the servo update thread
     GPIO.cleanup()

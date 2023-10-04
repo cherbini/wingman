@@ -216,7 +216,7 @@ class DynamixelController:
 # Usage example
 if __name__ == "__main__":
     # Parameters: device port, baud rate, pan servo ID, tilt servo ID
-    dynamixel_controller = DynamixelController("/dev/ttyDXL", 1000000, 1, 2)
+    dynamixel_controller = DynamixelController("/dev/ttyUSB0)", 1000000, 1, 2)
 
     # Perform servo test
     dynamixel_controller.servo_test()

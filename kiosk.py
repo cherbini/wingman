@@ -26,6 +26,13 @@ class Kiosk(tk.Tk):
         self.ps4_process = None
         self.main_process = None
         self.draw_title()
+        # Add Text widget for stdout display
+        self.stdout_display = tk.Text(self, height=5, wrap=tk.WORD, font=("Arial", 12), bg='gray90', fg='black', bd=0,
+                                      highlightthickness=0, state=tk.DISABLED)
+        self.stdout_display.place(x=50, y=500, width=924)  # Adjust the y-position to move the widget upwards
+
+        # Store process outputs in a buffer
+        self.output_buffer = []
 
 
     # ... rest of the class remains unchanged
@@ -87,16 +94,48 @@ class Kiosk(tk.Tk):
         tk.Label(about_window, text="Kevin Finisterre").pack()
         tk.Label(about_window, text="John Cherbini").pack()
 
+    def append_to_stdout(self, line):
+        """Append a line of text to the Text widget and ensure only the last 3 lines are visible."""
+        self.output_buffer.append(line)
+        while len(self.output_buffer) > 3:  # Keep only the last 3 lines
+            self.output_buffer.pop(0)
+        self.stdout_display.config(state=tk.NORMAL)
+        self.stdout_display.delete(1.0, tk.END)
+        self.stdout_display.insert(tk.END, '\n'.join(self.output_buffer))
+        self.stdout_display.config(state=tk.DISABLED)
+
+    def update_stdout_display(self):
+        try:
+            if self.ps4_process and self.ps4_process.poll() is None:
+                line = self.ps4_process.stdout.readline().strip()
+                if line:
+                    self.append_to_stdout(line)
+            if self.main_process and self.main_process.poll() is None:
+                line = self.main_process.stdout.readline().strip()
+                if line:
+                    self.append_to_stdout(line)
+            self.after(100, self.update_stdout_display)
+        except Exception as e:
+            print("Error in update_stdout_display:", e)
+
     def ps4_clicked(self):
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
         if self.main_process and self.main_process.poll() is None:
             self.main_process.terminate()
-        self.ps4_process = subprocess.Popen(['python3', 'ps4.py'])
-    
+        self.ps4_process = subprocess.Popen(['python3', 'ps4.py'], env=env, stdout=subprocess.PIPE,
+                                            stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True)
+        self.update_stdout_display()
+
     def track_clicked(self):
+        env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"
         if self.ps4_process and self.ps4_process.poll() is None:
             self.ps4_process.terminate()
-        self.main_process = subprocess.Popen(['python3', 'main.py'])
-    
+        self.main_process = subprocess.Popen(['python3', 'main.py'], env=env, stdout=subprocess.PIPE,
+                                             stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True)
+        self.update_stdout_display()
+
     def stop_clicked(self):
         if self.ps4_process and self.ps4_process.poll() is None:
             self.ps4_process.terminate()
