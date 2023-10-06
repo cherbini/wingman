@@ -21,6 +21,13 @@ class Kiosk(tk.Tk):
 
         self.hamburger_menu = tk.Menu(self, tearoff=0)
         self.build_hamburger_menu()
+        # Add "Copy" button
+        self.copy_button = tk.Button(self, text="Copy", command=self.copy_to_clipboard)
+        self.copy_button.place(x=50, y=650, width=100, height=30)
+
+        # Add "Clear" button
+        self.clear_button = tk.Button(self, text="Clear", command=self.clear_stdout_display)
+        self.clear_button.place(x=200, y=650, width=100, height=30)
 
         self.bind("<Button-3>", self.show_hamburger_menu)
         self.ps4_process = None
@@ -94,10 +101,22 @@ class Kiosk(tk.Tk):
         tk.Label(about_window, text="Kevin Finisterre").pack()
         tk.Label(about_window, text="John Cherbini").pack()
 
+    def copy_to_clipboard(self):
+        """Copy the contents of the stdout_display Text widget to the clipboard."""
+        content = self.stdout_display.get(1.0, tk.END)
+        self.clipboard_clear()
+        self.clipboard_append(content)
+
+    def clear_stdout_display(self):
+        """Clear the contents of the stdout_display Text widget."""
+        self.stdout_display.config(state=tk.NORMAL)
+        self.stdout_display.delete(1.0, tk.END)
+        self.stdout_display.config(state=tk.DISABLED)
+
     def append_to_stdout(self, line):
-        """Append a line of text to the Text widget and ensure only the last 3 lines are visible."""
+        """Append a line of text to the Text widget and ensure only the last 50 lines are visible."""
         self.output_buffer.append(line)
-        while len(self.output_buffer) > 3:  # Keep only the last 3 lines
+        while len(self.output_buffer) > 50:  # Keep only the last 50 lines
             self.output_buffer.pop(0)
         self.stdout_display.config(state=tk.NORMAL)
         self.stdout_display.delete(1.0, tk.END)
