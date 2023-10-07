@@ -66,8 +66,8 @@ class DynamixelController:
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
 
         # Initialize PID Controller
-        self.pan_pid = PIDController(kp=1.6, ki=0.0, kd=0.4)
-        self.tilt_pid = PIDController(kp=1.6, ki=0.0, kd=0.4)
+        self.pan_pid = PIDController(kp=2, ki=0.0, kd=0.8)
+        self.tilt_pid = PIDController(kp=2, ki=0.0, kd=0.8)
 
     def home_servos(self):
         """

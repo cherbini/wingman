@@ -37,8 +37,8 @@ class Application:
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-        self.process_noise_cov = 6
-        self.measurement_noise_cov = 4
+        self.process_noise_cov = 0.01
+        self.measurement_noise_cov = 0.01
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -127,6 +127,13 @@ class Application:
         center = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))
         radius = 10  # Example radius; adjust as necessary
         color = (0, 0, 255)  # RGB for red
+        thickness = 2  # Thickness of the circle outline
+        cv2.circle(frame, center, radius, color, thickness)
+
+    def draw_orange_circle(self, frame, centroid):
+        center = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))
+        radius = 10  # Example radius; adjust as necessary
+        color = (255, 165, 0)  # RGB for orange 
         thickness = 2  # Thickness of the circle outline
         cv2.circle(frame, center, radius, color, thickness)
 
@@ -260,60 +267,41 @@ class Application:
                         
                     else:
                         self.april_tag_visible = False
-                        # No AprilTags detected, handle accordingly
-
                         last_detection_timestamp = None
                         last_still_timestamp = None
-
-                        if detections:
-                            centroid = (0.5, 0.5)
+                    
+                        # Predict using Kalman
+                        prediction = self.kalman.predict()
+                    
+                        # If no detections, use the prediction
+                        if not detections:
+                            centroid = (prediction[0][0], prediction[1][0])
+                            self.draw_orange_circle(frame, centroid)
+                    
+                        # If detections are present
+                        elif detections:
                             most_confident_detection = max(detections, key=lambda detection: detection.confidence)
                     
-                            # Update the timestamp for the last detection
+                            # Update timestamp and correct Kalman filter
                             last_detection_timestamp = time.time()
-                    
-                            if most_confident_detection.label == 0:
-                                bbox = self.get_bbox_coordinates(most_confident_detection)
-                                centroid = self.calculate_centroid(most_confident_detection)
-                                last_centroid = centroid 
-                    
-                                try: 
-                                    self.draw_centroid(frame, centroid)
-                                    prediction = self.update_kalman_filter(centroid)
-
-                                    if np.all(self.MIN_VALID_PREDICTION <= prediction) and np.all(prediction <= self.MAX_VALID_PREDICTION):
-                                        self.draw_prediction(frame, prediction)
-                                        vx, vy = self.calculate_velocity(centroid)
-                                        if vx == 0 and vy == 0:  # Detected object is still
-                                            if not last_still_timestamp:
-                                                last_still_timestamp = time.time()
-                                        else:
-                                            last_still_timestamp = None
-                                        
-                                        if vx and vy:
-                                            self.prev_vx_pixels, self.prev_vy_pixels = vx, vy
-                                    else:
-                                        if last_centroid:
-                                            self.draw_centroid(frame, last_centroid)
-                                        if last_prediction:
-                                            self.draw_prediction(frame, last_prediction)
+                            centroid = self.calculate_centroid(most_confident_detection)
+                            centroid_measurement = np.array([[np.float32(centroid[0])], [np.float32(centroid[1])]])
+                            self.kalman.correct(centroid_measurement)
+        
                         
-                                    pan_goal = self.coordinate_system.image_position_to_servo_goal(
-                                        1 - centroid[0] if self.reverse_pan else centroid[0], 1,
-                                        self.dynamixel_controller.PAN_MIN_POSITION,
-                                        self.dynamixel_controller.PAN_MAX_POSITION
-                                    ) * self.servo_scale
+                            pan_goal = self.coordinate_system.image_position_to_servo_goal(
+                             1 - centroid[0] if self.reverse_pan else centroid[0], 1,
+                             self.dynamixel_controller.PAN_MIN_POSITION,
+                             self.dynamixel_controller.PAN_MAX_POSITION
+                            ) * self.servo_scale
                         
-                                    tilt_goal = self.coordinate_system.image_position_to_servo_goal(
-                                        1 - centroid[1] if self.reverse_tilt else centroid[1], 1,
-                                        self.dynamixel_controller.TILT_MIN_POSITION,
-                                        self.dynamixel_controller.TILT_MAX_POSITION
-                                    ) * self.servo_scale
+                            tilt_goal = self.coordinate_system.image_position_to_servo_goal(
+                             1 - centroid[1] if self.reverse_tilt else centroid[1], 1,
+                             self.dynamixel_controller.TILT_MIN_POSITION,
+                             self.dynamixel_controller.TILT_MAX_POSITION
+                            ) * self.servo_scale
                         
-                                    self.process_centroid(frame, centroid)
-
-                                except Exception as e:
-                                    print(f"Error processing detections: {e}", flush=True)
+                            self.process_centroid(frame, centroid)
 
                             if pan_goal and tilt_goal:
                                 pan_goal = self.clamp_servo_position(pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION)
@@ -325,21 +313,13 @@ class Application:
                                 except Exception as e:
                                     print(f"Error: The data value exceeds the limit value. {e}", flush=True)
 
-                            # Check elapsed time since last detection
                             elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
                             elapsed_time_still = time.time() - last_still_timestamp if last_still_timestamp else float('inf')
-                        
-                            # Display green dot if within three seconds of detection
                             if elapsed_time_since_detection <= 3:
-                                self.draw_centroid(frame, centroid)  # Assuming you have this method
-                        
-                            # Display red and green dots if the detection has been still for three seconds
-                            if elapsed_time_still <= 3 and elapsed_time_since_detection <= 3:
-                                self.draw_red_circle(frame, centroid)  # Assuming you have this method
-
-                            # Go Home after 5 seconds no detections
-                            if elapsed_time_since_detection > 7:
-                                self.dynamixel_controller.home_servos()
+                                if elapsed_time_still <= 3:
+                                    self.draw_red_circle(frame, centroid)
+                                else:
+                                    self.draw_centroid(frame, centroid)  # Green dot
 
                     # Display the frame
                     if self.show_frame:

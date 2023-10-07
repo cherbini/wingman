@@ -5,7 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="fea69d89-8fd2-42e7-a4bb-5046cf75cb5a" name="Changes" comment="Improved stdout buffer to 50 lines.">
-      <change beforePath="$PROJECT_DIR$/kiosk.py" beforeDir="false" afterPath="$PROJECT_DIR$/kiosk.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]1/shelved.patch" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/dynamixel_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/dynamixel_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
