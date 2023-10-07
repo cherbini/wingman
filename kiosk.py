@@ -40,9 +40,18 @@ class Kiosk(tk.Tk):
 
         # Store process outputs in a buffer
         self.output_buffer = []
+        self.stdout_frame = tk.Frame(self)
+        self.stdout_frame.place(x=50, y=500, width=924, height=140)  # Adjusted height to accommodate scrollbar
+
+        self.scrollbar = tk.Scrollbar(self.stdout_frame)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.stdout_display = tk.Text(self.stdout_frame, height=5, wrap=tk.WORD, font=("Arial", 12), bg='gray90', fg='black', bd=0, highlightthickness=0, state=tk.DISABLED, yscrollcommand=self.scrollbar.set)
+        self.stdout_display.pack(fill=tk.BOTH, expand=1)
+        
+        self.scrollbar.config(command=self.stdout_display.yview)
 
 
-    # ... rest of the class remains unchanged
 
     def load_skin(self, skin_file):
         with open(os.path.join(self.skin_folder, skin_file), 'r') as file:
@@ -122,6 +131,7 @@ class Kiosk(tk.Tk):
         self.stdout_display.delete(1.0, tk.END)
         self.stdout_display.insert(tk.END, '\n'.join(self.output_buffer))
         self.stdout_display.config(state=tk.DISABLED)
+        self.stdout_display.yview(tk.END)  # Automatically scroll to the end
 
     def update_stdout_display(self):
         try:
