@@ -287,7 +287,7 @@ class Application:
                             centroid = self.calculate_centroid(most_confident_detection)
                             centroid_measurement = np.array([[np.float32(centroid[0])], [np.float32(centroid[1])]])
                             self.kalman.correct(centroid_measurement)
-        
+
                             pan_goal = self.coordinate_system.image_position_to_servo_goal(
                              1 - centroid[0] if self.reverse_pan else centroid[0], 1,
                              self.dynamixel_controller.PAN_MIN_POSITION,

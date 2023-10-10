@@ -35,6 +35,14 @@ class PIDController:
         self._prev_error = error
         return output
 
+    def set_parameters(self, kp, ki, kd):
+        """
+        Update the PID parameters.
+        """
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+
 if __name__ == "__main__":
     # Test the PID controller
     pid = PIDController(1, 0.1, 0.01, setpoint=50)

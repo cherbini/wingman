@@ -66,8 +66,8 @@ class DynamixelController:
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
 
         # Initialize PID Controller
-        self.pan_pid = PIDController(kp=5, ki=0.0, kd=2)
-        self.tilt_pid = PIDController(kp=5, ki=0.0, kd=2)
+        self.pan_pid = PIDController(kp=8.0, ki=0.0, kd=3.0)
+        self.tilt_pid = PIDController(kp=2, ki=0.0, kd=1.0)
 
     def home_servos(self):
         """
@@ -224,12 +224,12 @@ class DynamixelController:
             time.sleep(1)  # Wait for 1 second for each move
 
 # Usage example
-if __name__ == "__main__":
+#if __name__ == "__main__":
     # Parameters: device port, baud rate, pan servo ID, tilt servo ID
-    dynamixel_controller = DynamixelController("/dev/ttyUSB0)", 1000000, 1, 2)
+#    dynamixel_controller = DynamixelController("/dev/ttyUSB0)", 1000000, 1, 2)
 
     # Perform servo test
-    dynamixel_controller.servo_test()
+#    dynamixel_controller.servo_test()
 
     # Close and release resources
-    dynamixel_controller.close()
+#    dynamixel_controller.close()
