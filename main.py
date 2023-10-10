@@ -37,8 +37,8 @@ class Application:
         self.kalman = cv2.KalmanFilter(4, 2)
         self.kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         self.kalman.transitionMatrix = np.array([[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32)
-        self.process_noise_cov = 0.01
-        self.measurement_noise_cov = 0.01
+        self.process_noise_cov = 6
+        self.measurement_noise_cov = 4
         self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
         self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
         self.kalman.statePost = np.zeros((4,1), np.float32)
@@ -288,7 +288,6 @@ class Application:
                             centroid_measurement = np.array([[np.float32(centroid[0])], [np.float32(centroid[1])]])
                             self.kalman.correct(centroid_measurement)
         
-                        
                             pan_goal = self.coordinate_system.image_position_to_servo_goal(
                              1 - centroid[0] if self.reverse_pan else centroid[0], 1,
                              self.dynamixel_controller.PAN_MIN_POSITION,
@@ -315,11 +314,10 @@ class Application:
 
                             elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
                             elapsed_time_still = time.time() - last_still_timestamp if last_still_timestamp else float('inf')
-                            if elapsed_time_since_detection <= 3:
-                                if elapsed_time_still <= 3:
-                                    self.draw_red_circle(frame, centroid)
-                                else:
-                                    self.draw_centroid(frame, centroid)  # Green dot
+                            if elapsed_time_still >= 4:
+                                self.draw_red_circle(frame, centroid)
+                            else:
+                                self.draw_centroid(frame, centroid)  # Green dot
 
                     # Display the frame
                     if self.show_frame:

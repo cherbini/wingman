@@ -19,15 +19,12 @@ class Kiosk(tk.Tk):
         self.current_skin = 'default_skin.json'
         self.load_skin(self.current_skin)
 
+       # Replaced "Copy" and "Clear" buttons with "Save to output.txt" button
+        self.save_button = tk.Button(self, text="Save to output.txt", command=self.save_to_output_txt)
+        self.save_button.place(x=50, y=650, width=200, height=30)  # Adjusted width to fit the new text
+
         self.hamburger_menu = tk.Menu(self, tearoff=0)
         self.build_hamburger_menu()
-        # Add "Copy" button
-        self.copy_button = tk.Button(self, text="Copy", command=self.copy_to_clipboard)
-        self.copy_button.place(x=50, y=650, width=100, height=30)
-
-        # Add "Clear" button
-        self.clear_button = tk.Button(self, text="Clear", command=self.clear_stdout_display)
-        self.clear_button.place(x=200, y=650, width=100, height=30)
 
         self.bind("<Button-3>", self.show_hamburger_menu)
         self.ps4_process = None
@@ -52,6 +49,11 @@ class Kiosk(tk.Tk):
         self.scrollbar.config(command=self.stdout_display.yview)
 
 
+    def save_to_output_txt(self):
+        """Save the contents of the stdout_display Text widget to output.txt."""
+        content = self.stdout_display.get(1.0, tk.END)
+        with open("output.txt", "w") as file:
+            file.write(content)
 
     def load_skin(self, skin_file):
         with open(os.path.join(self.skin_folder, skin_file), 'r') as file:

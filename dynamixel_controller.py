@@ -66,8 +66,8 @@ class DynamixelController:
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
 
         # Initialize PID Controller
-        self.pan_pid = PIDController(kp=2, ki=0.0, kd=0.8)
-        self.tilt_pid = PIDController(kp=2, ki=0.0, kd=0.8)
+        self.pan_pid = PIDController(kp=5, ki=0.0, kd=2)
+        self.tilt_pid = PIDController(kp=5, ki=0.0, kd=2)
 
     def home_servos(self):
         """
@@ -152,12 +152,22 @@ class DynamixelController:
         return True
 
     def set_goal_position_with_pid(self, pan_goal, tilt_goal):
+        MAX_PAN_OUTPUT = 500
+        RAMP_RATE = 0.25
+
         if pan_goal is not None:
             pan_goal = self.clamp_servo_position(pan_goal, self.PAN_MIN_POSITION, self.PAN_MAX_POSITION)
             current_pan_position, _ = self.get_present_position()  # Unpack only the pan position
             while abs(current_pan_position - pan_goal) > 10:  # 10 is the tolerance
                 pan_error = pan_goal - current_pan_position
                 pan_output = self.pan_pid.update(pan_error)
+
+                # Limit the pan output
+                pan_output = min(max(pan_output, -MAX_PAN_OUTPUT), MAX_PAN_OUTPUT)
+
+                # Apply the ramping mechanism
+                pan_output *= RAMP_RATE
+
                 print("Pan Error:", pan_error)
                 print("Pan Output:", pan_output)
                 self.set_goal_position(int(current_pan_position - pan_output), None)
