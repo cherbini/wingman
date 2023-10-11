@@ -1,51 +1,50 @@
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-Pan Output: -7.800000000000001
-Current Pan Position: 3565
-Pan Error: 39
-
+Pan Output: -125.0
+Current Pan Position: 3506
+Pan Error: 155
+Pan Output: -125.0
+Current Pan Position: 3543
+Pan Error: 118
+Pan Output: -125.0
+Current Pan Position: 3581
+Pan Error: 80
+Pan Output: -125.0
+Current Pan Position: 3618
+Pan Error: 43
+Pan Output: -58.25
+Current Pan Position: 3648
+Pan Error: 13
+Pan Output: -3.5
+Current Pan Position: 3656
+Tilt Error: 67
+Tilt Output: -201.0
+Tilt Error: 55
+Tilt Output: -98.0
+Tilt Error: 13
+Tilt Output: 16.0
+Pan Error: -1975
+Pan Output: 125.0
+Current Pan Position: 3638
+Pan Error: -1964
+Pan Output: 125.0
+Current Pan Position: 3596
+Pan Error: -1922
+Pan Output: 125.0
+Current Pan Position: 3558
+Pan Error: -1884
+Pan Output: 125.0
+Current Pan Position: 3519
+Pan Error: -1845
+Pan Output: 125.0
+Current Pan Position: 3482
+Pan Error: -1808
+Pan Output: 125.0
+Current Pan Position: 3444
+Pan Error: -1770
+Pan Output: 125.0
+Current Pan Position: 3406
+Pan Error: -1732
+Pan Output: 125.0
+Current Pan Position: 3368
+Pan Error: -1694
+Pan Output: 125.0
+Current Pan Position: 3331

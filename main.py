@@ -67,13 +67,17 @@ class Application:
         self.tag_confidence_threshold = .7
         self.servo_scale = 1
         self.show_frame = 1
-        self.servo_speed = 500
+        self.servo_speed = 200
         self.reverse_pan = 0
         self.reverse_tilt = 0
         self.prev_x_pixels = None
         self.prev_y_pixels = None
         self.prev_vx_pixels = None
         self.prev_vy_pixels = None
+
+    def update_kalman_filter(self):
+        self.kalman.processNoiseCov = np.eye(4, dtype=np.float32) * self.process_noise_cov
+        self.kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * self.measurement_noise_cov
 
     def activate_relay(self, duration=2):
             GPIO.output(self.relay_pin, GPIO.HIGH)

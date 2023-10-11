@@ -7,9 +7,10 @@ from dynamixel_controller import DynamixelController
 
 
 class Kiosk(tk.Tk):
-    def __init__(self, dynamixel_controller, skin_folder='skins'):
-        super().__init__()
-        self.dynamixel_controller = dynamixel_controller
+    def __init__(self, application_instance, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.application_instance = application_instance
+        self.dynamixel_controller = application_instance
         self.title('Kiosk Application')
         self.geometry('1024x768')  # Set the resolution
         self.attributes('-fullscreen', True)  # Start in fullscreen
@@ -17,26 +18,18 @@ class Kiosk(tk.Tk):
         # Exit button on the top-left corner
         self.exit_button = tk.Button(self, text="X", command=self.destroy, bg="red", fg="white")
         self.exit_button.place(x=10, y=10, width=30, height=30)
-
-        self.skin_folder = skin_folder
-        self.current_skin = 'default_skin.json'
-        self.load_skin(self.current_skin)
-
+        # Exit admin mode button
+        self.exit_admin_button = tk.Button(self, text="X", command=self.exit_admin_mode, bg="red", fg="white")
+   
        # Replaced "Copy" and "Clear" buttons with "Save to output.txt" button
         self.save_button = tk.Button(self, text="Save to output.txt", command=self.save_to_output_txt)
         self.save_button.place(x=50, y=650, width=200, height=30)  # Adjusted width to fit the new text
 
         self.hamburger_menu = tk.Menu(self, tearoff=0)
-        self.build_hamburger_menu()
 
         self.bind("<Button-3>", self.show_hamburger_menu)
         self.ps4_process = None
         self.main_process = None
-        self.draw_title()
-        # Add Text widget for stdout display
-        self.stdout_display = tk.Text(self, height=5, wrap=tk.WORD, font=("Arial", 12), bg='gray90', fg='black', bd=0,
-                                      highlightthickness=0, state=tk.DISABLED)
-        self.stdout_display.place(x=50, y=500, width=924)  # Adjust the y-position to move the widget upwards
 
         # Store process outputs in a buffer
         self.output_buffer = []
@@ -68,6 +61,12 @@ class Kiosk(tk.Tk):
         self.tilt_kd_slider = tk.Scale(self.tilt_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kd", command=self.update_tilt_pid)
         # Initialize the dynamixel controller
         self.dynamixel_controller = DynamixelController("/dev/ttyUSB0", 1000000, 1, 2)  # Adjust parameters if needed
+
+        self.skin_folder = "./skins"
+        self.current_skin = "default_skin.json"
+        self.load_skin(self.current_skin)
+        self.build_hamburger_menu()
+        self.draw_title()
 
     # Adjust the placement and size of the Pan PIDs frame and sliders
     # Adjust the placement and size of the Pan PIDs frame and sliders
@@ -141,7 +140,23 @@ class Kiosk(tk.Tk):
                                       bg='green', fg='white',
                                       width=button_width, height=button_height, font=button_font)
         self.track_button.place(x=start_x + 2*button_width + 2*spacing, y=y, width=button_width, height=button_height)
+                # Hide PID and Kalman sliders in non-admin mode
 
+        # Only hide the widgets if they exist:
+        if hasattr(self, 'process_noise_cov_frame'):
+            self.process_noise_cov_frame.place_forget()
+    
+        if hasattr(self, 'tilt_pids_frame'):
+            self.tilt_pids_frame.place_forget()
+    
+        if hasattr(self, 'measurement_noise_cov_frame'):
+            self.measurement_noise_cov_frame.place_forget()
+    
+            self.pan_pids_frame.place_forget()
+            self.tilt_pids_frame.place_forget()
+            self.process_noise_cov_frame.place_forget()
+            self.measurement_noise_cov_frame.place_forget()
+    
     def build_hamburger_menu(self):
         skins_menu = tk.Menu(self.hamburger_menu, tearoff=0)
 
@@ -150,7 +165,57 @@ class Kiosk(tk.Tk):
                 skins_menu.add_command(label=skin_file, command=lambda s=skin_file: self.load_skin(s))
 
         self.hamburger_menu.add_cascade(label="Skins", menu=skins_menu)
+        self.hamburger_menu.add_command(label="Admin", command=self.show_admin_controls)
         self.hamburger_menu.add_command(label="About", command=self.show_about)
+
+    def show_admin_controls(self):
+        # Hide main buttons
+        self.ps4_button.place_forget()
+        self.stop_button.place_forget()
+        self.track_button.place_forget()
+
+        # Show exit admin mode button
+        self.exit_admin_button.place(x=10, y=50, width=30, height=30)
+
+        # Show PID controls and Kalman filter sliders
+        self.draw_pid_sliders()
+        self.draw_kalman_sliders()
+
+    def exit_admin_mode(self):
+        # Hide PID and Kalman sliders
+        self.pan_pids_frame.place_forget()
+        self.tilt_pids_frame.place_forget()
+        self.process_noise_cov_frame.place_forget()
+        self.measurement_noise_cov_frame.place_forget()
+        self.exit_admin_button.place_forget()
+
+        # Show main buttons
+        self.draw_buttons()
+
+    def draw_kalman_sliders(self):
+        right_padding = 50
+        slider_width = 220
+        slider_height = (self.winfo_height() - 2 * right_padding) / 2
+
+        self.process_noise_cov_frame = ttk.LabelFrame(self, text="Process Noise Cov", padding=(10, 5))
+        self.process_noise_cov_frame.place(x=50, y=right_padding, width=slider_width, height=slider_height)
+
+        self.measurement_noise_cov_frame = ttk.LabelFrame(self, text="Measurement Noise Cov", padding=(10, 5))
+        self.measurement_noise_cov_frame.place(x=50, y=self.winfo_height()/2 + right_padding/2, width=slider_width, height=slider_height)
+
+        self.process_noise_cov_slider = tk.Scale(self.process_noise_cov_frame, from_=0, to_=100, resolution=0.1, orient=tk.HORIZONTAL, label="Value", command=self.update_process_noise_cov)
+        self.measurement_noise_cov_slider = tk.Scale(self.measurement_noise_cov_frame, from_=0, to_=100, resolution=0.1, orient=tk.HORIZONTAL, label="Value", command=self.update_measurement_noise_cov)
+
+        self.process_noise_cov_slider.pack(fill=tk.BOTH, expand=True)
+        self.measurement_noise_cov_slider.pack(fill=tk.BOTH, expand=True)
+
+    def update_process_noise_cov(self, event=None):
+        self.application_instance.process_noise_cov = float(self.process_noise_cov_slider.get())
+        self.application_instance.update_kalman_filter()
+
+    def update_measurement_noise_cov(self, event=None):
+        self.application_instance.measurement_noise_cov = float(self.measurement_noise_cov_slider.get())
+        self.application_instance.update_kalman_filter()
 
     def show_hamburger_menu(self, event):
         self.hamburger_menu.post(event.x_root, event.y_root)
@@ -249,6 +314,15 @@ class Kiosk(tk.Tk):
             self.ps4_process.terminate()
         self.main_process = subprocess.Popen(['python3', 'main.py'], env=env, stdout=subprocess.PIPE,
                                              stderr=subprocess.STDOUT, bufsize=1, universal_newlines=True)
+        # Set the slider values to the current PID values before starting tracking
+        self.pan_kp_slider.set(self.dynamixel_controller.pan_pid.kp)
+        self.pan_ki_slider.set(self.dynamixel_controller.pan_pid.ki)
+        self.pan_kd_slider.set(self.dynamixel_controller.pan_pid.kd)
+    
+        self.tilt_kp_slider.set(self.dynamixel_controller.tilt_pid.kp)
+        self.tilt_ki_slider.set(self.dynamixel_controller.tilt_pid.ki)
+        self.tilt_kd_slider.set(self.dynamixel_controller.tilt_pid.kd)
+
         self.update_stdout_display()
 
     def stop_clicked(self):
@@ -259,6 +333,7 @@ class Kiosk(tk.Tk):
             self.main_process.terminate()
 
     def draw_title(self):
+        self.update_idletasks()
         custom_font = ('8-bit\ Arcade\ In.ttf', 48)
     
         # Get coordinates and dimensions of the STOP button
