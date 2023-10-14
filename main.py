@@ -11,11 +11,8 @@ from dynamixel_controller import DynamixelController
 from motion_tracker import MotionTracker
 from coordinate_system import CoordinateSystem
 
-
 def nothing(x):
     pass
-
-
 
 class Application:
     def __init__(self):
@@ -231,6 +228,7 @@ class Application:
                         centroid = centroid.astype(np.float32)  # Convert centroid matrix to float32
 
                         self.is_authorized(frame, tag.tag_id)
+
                         print(f"Badge Detected: {tag.tag_id}", flush=True)
                         print(f"Type of centroid matrix: {centroid.dtype}", flush=True)
                         print(f"Type of measurementMatrix: {self.kalman.measurementMatrix.dtype}", flush=True)

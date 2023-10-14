@@ -3,6 +3,7 @@
 
 import time
 import cv2
+import sys
 import depthai as dai
 from pyPS4Controller.controller import Controller
 from dynamixel_sdk import *
@@ -149,6 +150,12 @@ try:
 
                 time.sleep(0.01)  # Delay between updates
 
+    def mouse_callback(event, x, y, flags, param):
+        # Check if left mouse button is clicked within the bounding box of the "X"
+        if event == cv2.EVENT_LBUTTONDOWN and 0 <= x <= 40 and 0 <= y <= 40:
+            cv2.destroyAllWindows()
+            sys.exit()  # Exit the program
+
     # Video capture function that runs on a separate thread
     def video_capture():
         pipeline = dai.Pipeline()
@@ -193,8 +200,11 @@ try:
                         # Add a red circle around the dot
                         cv2.circle(frame, center_coordinates, 25, (0, 0, 255), 1)
 
+                    # Draw "X" for exit in top-left corner
+                    cv2.putText(frame, "X", (10,30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
                     cv2.namedWindow("OAK-1", cv2.WND_PROP_FULLSCREEN)
+                    cv2.setMouseCallback("OAK-1", mouse_callback)
                     cv2.setWindowProperty("OAK-1", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                     cv2.imshow("OAK-1", frame)
 

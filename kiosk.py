@@ -14,6 +14,10 @@ class Kiosk(tk.Tk):
         self.title('Kiosk Application')
         self.geometry('1024x768')  # Set the resolution
         self.attributes('-fullscreen', True)  # Start in fullscreen
+        # Bind the resizing event
+        self.bind("<Configure>", self.on_resize)
+        self._resizing = False
+
 
         # Exit button on the top-left corner
         self.exit_button = tk.Button(self, text="X", command=self.destroy, bg="red", fg="white")
@@ -44,13 +48,11 @@ class Kiosk(tk.Tk):
         
         self.scrollbar.config(command=self.stdout_display.yview)
 
-        # Add the Pan PIDs frame and sliders
+       # Add the Pan PIDs frame and sliders
         self.pan_pids_frame = ttk.LabelFrame(self, text="Pan PIDs", padding=(10, 5))
-        self.pan_pids_frame.place(x=750, y=500, width=220, height=150)
 
         # Add the Tilt PIDs frame and sliders
         self.tilt_pids_frame = ttk.LabelFrame(self, text="Tilt PIDs", padding=(10, 5))
-        self.tilt_pids_frame.place(x=750, y=660, width=220, height=150)
 
         self.pan_kp_slider = tk.Scale(self.pan_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kp", command=self.update_pan_pid)
         self.pan_ki_slider = tk.Scale(self.pan_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Ki", command=self.update_pan_pid)
@@ -118,44 +120,34 @@ class Kiosk(tk.Tk):
     
         # Starting x-coordinate to center the three buttons
         #start_x = (1024 - total_width) // 2
-        start_x = 50
+        start_x = (self.winfo_width() - total_width) // 2
     
         # Vertically center the buttons
-        y = (768 - button_height) // 2
-    
-        # Blue (PS4) button
-        self.ps4_button = tk.Button(self, text='PS4', command=self.ps4_clicked,
-                                    bg='blue', fg='white',
-                                    width=button_width, height=button_height, font=button_font)
+        y = (self.winfo_height() - button_height) // 2
+
+        # Check if the buttons already exist before recreating them
+        if not hasattr(self, 'ps4_button'):
+            # Blue (PS4) button
+            self.ps4_button = tk.Button(self, text='PS4', command=self.ps4_clicked,
+                                        bg='blue', fg='white',
+                                        width=button_width, height=button_height, font=button_font)
         self.ps4_button.place(x=start_x, y=y, width=button_width, height=button_height)
-        
-        # Red (STOP) button
-        self.stop_button = tk.Button(self, text='STOP', command=self.stop_clicked,
-                                     bg='red', fg='white',
-                                     width=button_width, height=button_height, font=button_font)
+
+
+        if not hasattr(self, 'stop_button'):
+            # Red (STOP) button
+            self.stop_button = tk.Button(self, text='STOP', command=self.stop_clicked,
+                                        bg='red', fg='white',
+                                        width=button_width, height=button_height, font=button_font)
         self.stop_button.place(x=start_x + button_width + spacing, y=y, width=button_width, height=button_height)
-        
-        # Green (TRACK) button
-        self.track_button = tk.Button(self, text='TRACK', command=self.track_clicked,
-                                      bg='green', fg='white',
-                                      width=button_width, height=button_height, font=button_font)
+    
+        if not hasattr(self, 'track_button'):
+            # Green (Track) button
+            self.track_button = tk.Button(self, text='TRACK', command=self.track_clicked,
+                                        bg='green', fg='white',
+                                        width=button_width, height=button_height, font=button_font)
         self.track_button.place(x=start_x + 2*button_width + 2*spacing, y=y, width=button_width, height=button_height)
                 # Hide PID and Kalman sliders in non-admin mode
-
-        # Only hide the widgets if they exist:
-        if hasattr(self, 'process_noise_cov_frame'):
-            self.process_noise_cov_frame.place_forget()
-    
-        if hasattr(self, 'tilt_pids_frame'):
-            self.tilt_pids_frame.place_forget()
-    
-        if hasattr(self, 'measurement_noise_cov_frame'):
-            self.measurement_noise_cov_frame.place_forget()
-    
-            self.pan_pids_frame.place_forget()
-            self.tilt_pids_frame.place_forget()
-            self.process_noise_cov_frame.place_forget()
-            self.measurement_noise_cov_frame.place_forget()
     
     def build_hamburger_menu(self):
         skins_menu = tk.Menu(self.hamburger_menu, tearoff=0)
@@ -168,18 +160,67 @@ class Kiosk(tk.Tk):
         self.hamburger_menu.add_command(label="Admin", command=self.show_admin_controls)
         self.hamburger_menu.add_command(label="About", command=self.show_about)
 
+    def create_admin_window(self):
+        self.admin_window = tk.Toplevel(self)
+        self.admin_window.geometry('500x600')  # Adjust size as needed for all the controls
+        self.admin_window.title('Admin Controls')
+        self.admin_window.protocol("WM_DELETE_WINDOW", self.on_admin_window_close)
+    
+        # Add the Pan PIDs frame and sliders to the new admin window
+        self.pan_pids_frame = ttk.LabelFrame(self.admin_window, text="Pan PIDs", padding=(10, 5))
+        self.pan_pids_frame.pack(pady=10, fill='x', padx=10)
+        
+        self.pan_kp_slider = tk.Scale(self.pan_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kp", command=self.update_pan_pid)
+        self.pan_kp_slider.pack(fill=tk.BOTH, expand=True)
+        self.pan_ki_slider = tk.Scale(self.pan_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Ki", command=self.update_pan_pid)
+        self.pan_ki_slider.pack(fill=tk.BOTH, expand=True)
+        self.pan_kd_slider = tk.Scale(self.pan_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kd", command=self.update_pan_pid)
+        self.pan_kd_slider.pack(fill=tk.BOTH, expand=True)
+    
+        # Add the Tilt PIDs frame and sliders
+        self.tilt_pids_frame = ttk.LabelFrame(self.admin_window, text="Tilt PIDs", padding=(10, 5))
+        self.tilt_pids_frame.pack(pady=10, fill='x', padx=10)
+        
+        self.tilt_kp_slider = tk.Scale(self.tilt_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kp", command=self.update_tilt_pid)
+        self.tilt_kp_slider.pack(fill=tk.BOTH, expand=True)
+        self.tilt_ki_slider = tk.Scale(self.tilt_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Ki", command=self.update_tilt_pid)
+        self.tilt_ki_slider.pack(fill=tk.BOTH, expand=True)
+        self.tilt_kd_slider = tk.Scale(self.tilt_pids_frame, from_=0, to_=10, resolution=0.1, orient=tk.HORIZONTAL, label="Kd", command=self.update_tilt_pid)
+        self.tilt_kd_slider.pack(fill=tk.BOTH, expand=True)
+    
+        # Kalman Filter Process Noise Covariance slider
+        self.process_noise_cov_frame = ttk.LabelFrame(self.admin_window, text="Process Noise Cov", padding=(10, 5))
+        self.process_noise_cov_frame.pack(pady=10, fill='x', padx=10)
+        
+        self.process_noise_cov_slider = tk.Scale(self.process_noise_cov_frame, from_=0, to_=100, resolution=0.1, orient=tk.HORIZONTAL, label="Value", command=self.update_process_noise_cov)
+        self.process_noise_cov_slider.pack(fill=tk.BOTH, expand=True)
+    
+        # Kalman Filter Measurement Noise Covariance slider
+        self.measurement_noise_cov_frame = ttk.LabelFrame(self.admin_window, text="Measurement Noise Cov", padding=(10, 5))
+        self.measurement_noise_cov_frame.pack(pady=10, fill='x', padx=10)
+        
+        self.measurement_noise_cov_slider = tk.Scale(self.measurement_noise_cov_frame, from_=0, to_=100, resolution=0.1, orient=tk.HORIZONTAL, label="Value", command=self.update_measurement_noise_cov)
+        self.measurement_noise_cov_slider.pack(fill=tk.BOTH, expand=True)
+    
+        # Close button for the admin window
+        self.exit_admin_button = tk.Button(self.admin_window, text="X", command=self.admin_window.destroy, bg="red", fg="white")
+        self.exit_admin_button.pack(anchor='nw', padx=10, pady=10)
+
     def show_admin_controls(self):
-        # Hide main buttons
-        self.ps4_button.place_forget()
-        self.stop_button.place_forget()
-        self.track_button.place_forget()
+        # Check if the admin window already exists
+        if hasattr(self, "admin_window") and self.admin_window.winfo_exists():
+            self.admin_window.lift()
+        else:
+            self.create_admin_window()
 
-        # Show exit admin mode button
-        self.exit_admin_button.place(x=10, y=50, width=30, height=30)
-
-        # Show PID controls and Kalman filter sliders
-        self.draw_pid_sliders()
-        self.draw_kalman_sliders()
+    def on_admin_window_close(self):
+        self.pan_pids_frame.destroy()
+        self.tilt_pids_frame.destroy()
+        self.process_noise_cov_frame.destroy()
+        self.measurement_noise_cov_frame.destroy()
+        self.exit_admin_button.destroy()
+        self.admin_window.destroy()
+        del self.admin_window
 
     def exit_admin_mode(self):
         # Hide PID and Kalman sliders
@@ -188,9 +229,15 @@ class Kiosk(tk.Tk):
         self.process_noise_cov_frame.place_forget()
         self.measurement_noise_cov_frame.place_forget()
         self.exit_admin_button.place_forget()
-
+        
+        # Show the main exit button
+        self.exit_button.place(x=10, y=10, width=30, height=30)
+        
         # Show main buttons
         self.draw_buttons()
+
+        if hasattr(self, "admin_window"):
+            self.admin_window.destroy()
 
     def draw_kalman_sliders(self):
         right_padding = 50
@@ -275,14 +322,12 @@ class Kiosk(tk.Tk):
         self.dynamixel_controller.pan_pid.set_parameters(kp, ki, kd)
         self.display_pid_values()
 
-
     def update_tilt_pid(self, event=None):
         kp = self.tilt_kp_slider.get()
         ki = self.tilt_ki_slider.get()
         kd = self.tilt_kd_slider.get()
         self.dynamixel_controller.tilt_pid.set_parameters(kp, ki, kd)
         self.display_pid_values()
-
 
     def update_stdout_display(self):
         try:
@@ -333,28 +378,35 @@ class Kiosk(tk.Tk):
             self.main_process.terminate()
 
     def draw_title(self):
-        self.update_idletasks()
         custom_font = ('8-bit\ Arcade\ In.ttf', 48)
-    
-        # Get coordinates and dimensions of the STOP button
-        stop_button_x = self.stop_button.winfo_x()
-        stop_button_width = self.stop_button.winfo_width()
-    
-        # Calculate the center point of the STOP button
-        stop_button_center_x = stop_button_x + stop_button_width / 2
-    
+        
         # Use a Label widget to calculate the width of the "WINGMAN" text using the custom font
         temp_label = tk.Label(self, text="WINGMAN", font=custom_font)
         temp_label.update_idletasks()
         title_width = temp_label.winfo_width()
         temp_label.destroy()
-    
-        # Calculate the starting x-coordinate for the "WINGMAN" title, adding a slight adjustment to the right.
-        adjustment = 190  # Increase or decrease this value to further adjust the position.
-        title_x = stop_button_center_x - title_width / 2 + adjustment
+        
+        # Calculate the starting x-coordinate for the "WINGMAN" title
+        title_x = (self.winfo_width() - title_width) // 2
         title_y = 70  # Adjust this value to position the title at a desired height
     
-        tk.Label(self, text="WINGMAN", font=custom_font, bg='black', fg='white').place(x=title_x, y=title_y)
+        if not hasattr(self, 'title_label'):
+            self.title_label = tk.Label(self, text="WINGMAN", font=custom_font, bg='black', fg='white')
+        self.title_label.place(x=title_x, y=title_y)
+
+    def on_resize(self, event):
+        # Check if we are already resizing
+        if self._resizing:
+            return
+
+        # Set the flag to True to prevent recursive calls
+        self._resizing = True
+
+        self.draw_buttons()
+        self.draw_title()
+
+        # Once done, reset the flag
+        self._resizing = False
 
 
 if __name__ == "__main__":
@@ -364,7 +416,6 @@ if __name__ == "__main__":
 
     # Now, instantiate the Kiosk app with the dynamixel controller
     kiosk_app = Kiosk(dynamixel_controller)
-    kiosk_app.after(100, kiosk_app.draw_pid_sliders)  # Delay of 100 milliseconds
     kiosk_app.mainloop()
 
 

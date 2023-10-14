@@ -1,50 +1,50 @@
-Pan Output: -125.0
-Current Pan Position: 3506
-Pan Error: 155
-Pan Output: -125.0
-Current Pan Position: 3543
-Pan Error: 118
-Pan Output: -125.0
-Current Pan Position: 3581
-Pan Error: 80
-Pan Output: -125.0
-Current Pan Position: 3618
-Pan Error: 43
-Pan Output: -58.25
-Current Pan Position: 3648
-Pan Error: 13
-Pan Output: -3.5
-Current Pan Position: 3656
-Tilt Error: 67
-Tilt Output: -201.0
-Tilt Error: 55
-Tilt Output: -98.0
-Tilt Error: 13
-Tilt Output: 16.0
-Pan Error: -1975
 Pan Output: 125.0
-Current Pan Position: 3638
-Pan Error: -1964
+Current Pan Position: 1847
+Pan Error: -527
 Pan Output: 125.0
-Current Pan Position: 3596
-Pan Error: -1922
+Current Pan Position: 1806
+Pan Error: -486
 Pan Output: 125.0
-Current Pan Position: 3558
-Pan Error: -1884
+Current Pan Position: 1769
+Pan Error: -449
 Pan Output: 125.0
-Current Pan Position: 3519
-Pan Error: -1845
+Current Pan Position: 1729
+Pan Error: -409
 Pan Output: 125.0
-Current Pan Position: 3482
-Pan Error: -1808
+Current Pan Position: 1694
+Pan Error: -374
 Pan Output: 125.0
-Current Pan Position: 3444
-Pan Error: -1770
+Current Pan Position: 1655
+Pan Error: -335
 Pan Output: 125.0
-Current Pan Position: 3406
-Pan Error: -1732
+Current Pan Position: 1617
+Pan Error: -297
 Pan Output: 125.0
-Current Pan Position: 3368
-Pan Error: -1694
+Current Pan Position: 1579
+Pan Error: -259
 Pan Output: 125.0
-Current Pan Position: 3331
+Current Pan Position: 1540
+Pan Error: -220
+Pan Output: 125.0
+Current Pan Position: 1504
+Pan Error: -184
+Pan Output: 125.0
+Current Pan Position: 1467
+Pan Error: -147
+Pan Output: 125.0
+Current Pan Position: 1432
+Pan Error: -112
+Pan Output: 125.0
+Current Pan Position: 1394
+Pan Error: -74
+Pan Output: 119.5
+Current Pan Position: 1358
+Pan Error: -38
+Pan Output: 49.0
+Current Pan Position: 1332
+Pan Error: -12
+Pan Output: 4.5
+Current Pan Position: 1326
+Tilt Error: 217
+Tilt Output: -663.0
+Tilt Error: 206
