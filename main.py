@@ -44,10 +44,6 @@ class Application:
         self.kalman.errorCovPre = np.eye(4, dtype=np.float32)
 
 
-        self.MAX_VALID_PREDICTION = 1000
-        self.MIN_VALID_PREDICTION = 0
-
-
         # Set home and detection timer
         self.home_position = (self.dynamixel_controller.PAN_CENTER_POSITION, self.dynamixel_controller.TILT_CENTER_POSITION)
         print(f"Home Position: {self.home_position}", flush=True)
