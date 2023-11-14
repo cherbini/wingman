@@ -66,8 +66,8 @@ class DynamixelController:
         self.groupSyncRead.addParam(self.TILT_SERVO_ID)
 
         # Initialize PID Controller
-        self.pan_pid = PIDController(kp=8.0, ki=0.0, kd=3.0)
-        self.tilt_pid = PIDController(kp=2, ki=0.0, kd=1.0)
+        self.pan_pid = PIDController(kp=3, ki=0.0, kd=3)
+        self.tilt_pid = PIDController(kp=2.0, ki=0.0, kd=0.0)
 
     def home_servos(self):
         """
@@ -152,7 +152,7 @@ class DynamixelController:
         return True
 
     def set_goal_position_with_pid(self, pan_goal, tilt_goal):
-        MAX_PAN_OUTPUT = 500
+        MAX_PAN_OUTPUT = 1000
         RAMP_RATE = 0.25
 
         if pan_goal is not None:

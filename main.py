@@ -127,10 +127,10 @@ class Application:
         thickness = 2  # Thickness of the circle outline
         cv2.circle(frame, center, radius, color, thickness)
 
-    def draw_orange_circle(self, frame, centroid):
+    def draw_blue_circle(self, frame, centroid):
         center = (int(centroid[0] * frame.shape[1]), int(centroid[1] * frame.shape[0]))
         radius = 10  # Example radius; adjust as necessary
-        color = (255, 165, 0)  # RGB for orange 
+        color = (255, 165, 0)  # RGB for blue
         thickness = 2  # Thickness of the circle outline
         cv2.circle(frame, center, radius, color, thickness)
 
@@ -274,32 +274,39 @@ class Application:
                         # If no detections, use the prediction
                         if not detections:
                             centroid = (prediction[0][0], prediction[1][0])
-                            self.draw_orange_circle(frame, centroid)
+                            self.draw_blue_circle(frame, centroid)
                     
                         # If detections are present
                         elif detections:
                             most_confident_detection = max(detections, key=lambda detection: detection.confidence)
+                            print(most_confident_detection)
                     
                             # Update timestamp and correct Kalman filter
                             last_detection_timestamp = time.time()
+                            print(f"Last Detection Timestamp: {last_detection_timestamp}")
                             centroid = self.calculate_centroid(most_confident_detection)
+                            print(f"centroid: {centroid}")
                             centroid_measurement = np.array([[np.float32(centroid[0])], [np.float32(centroid[1])]])
+                            print(f"centroid measurement: {centroid_measurement}")
                             self.kalman.correct(centroid_measurement)
+                            print(f"Kalman filter corrected with centroid measurement")
 
                             pan_goal = self.coordinate_system.image_position_to_servo_goal(
                              1 - centroid[0] if self.reverse_pan else centroid[0], 1,
                              self.dynamixel_controller.PAN_MIN_POSITION,
                              self.dynamixel_controller.PAN_MAX_POSITION
                             ) * self.servo_scale
+                            print(f"First Pan Goal: {pan_goal}")
                         
                             tilt_goal = self.coordinate_system.image_position_to_servo_goal(
                              1 - centroid[1] if self.reverse_tilt else centroid[1], 1,
                              self.dynamixel_controller.TILT_MIN_POSITION,
                              self.dynamixel_controller.TILT_MAX_POSITION
                             ) * self.servo_scale
-                        
-                            self.process_centroid(frame, centroid)
-
+                            print(f"First Tilt Goal: {tilt_goal}")
+#                        
+#                            self.process_centroid(frame, centroid)
+#
                             if pan_goal and tilt_goal:
                                 pan_goal = self.clamp_servo_position(pan_goal, self.dynamixel_controller.PAN_MIN_POSITION, self.dynamixel_controller.PAN_MAX_POSITION)
                                 tilt_goal = self.clamp_servo_position(tilt_goal, self.dynamixel_controller.TILT_MIN_POSITION, self.dynamixel_controller.TILT_MAX_POSITION)
@@ -309,13 +316,13 @@ class Application:
 
                                 except Exception as e:
                                     print(f"Error: The data value exceeds the limit value. {e}", flush=True)
-
-                            elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
-                            elapsed_time_still = time.time() - last_still_timestamp if last_still_timestamp else float('inf')
-                            if elapsed_time_still >= 4:
-                                self.draw_red_circle(frame, centroid)
-                            else:
-                                self.draw_centroid(frame, centroid)  # Green dot
+#
+#                            elapsed_time_since_detection = time.time() - last_detection_timestamp if last_detection_timestamp else float('inf')
+#                            elapsed_time_still = time.time() - last_still_timestamp if last_still_timestamp else float('inf')
+#                            if elapsed_time_still >= 4:
+#                                self.draw_red_circle(frame, centroid)
+#                            else:
+#                                self.draw_centroid(frame, centroid)  # Green dot
 
                     # Display the frame
                     if self.show_frame:
